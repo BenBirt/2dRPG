@@ -263,3 +263,37 @@ html, body {
 }
 
 .menu-btn:hover, .menu-btn:focus { background: rgba(142, 192, 255, 0.18); outline: none; }
+
+/* ---------- fade ---------- */
+#fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+  z-index: 45;
+}
+
+#fade.on { opacity: 1; }
+
+.intro-page {
+  font-size: clamp(16px, 2.6vw, 20px);
+  white-space: pre-line;
+}
+
+/* ---------- hud extras (HUD.js) ---------- */
+.h-full {
+  color: #e23b4a;
+}
+
+.h-half {
+  background: linear-gradient(90deg, #e23b4a 50%, rgba(255,255,255,0.25) 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.h-empty {
+  color: rgba(255,255,255,0.25);
+}

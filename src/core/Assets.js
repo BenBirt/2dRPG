@@ -5,6 +5,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const MODELS = {
   // characters
   knight: './assets/models/characters/knight.glb',
+  mage: './assets/models/characters/mage.glb',
+  rogue: './assets/models/characters/rogue.glb',
+  barbarian: './assets/models/characters/barbarian.glb',
   skeleton_minion: './assets/models/enemies/skeleton_minion.glb',
   skeleton_rogue: './assets/models/enemies/skeleton_rogue.glb',
   skeleton_mage: './assets/models/enemies/skeleton_mage.glb',

@@ -1,6 +1,9 @@
-import * as THREE from 'three';
 import { buildMap } from './MapLoader.js';
 import { TILE, DROPS } from '../data/balance.js';
+import { createInteractable, Door } from '../entities/Interactables.js';
+import { createEnemy } from '../entities/enemies/Skeletons.js';
+import { createBoss } from '../entities/bosses/Bosses.js';
+import { Pickup } from '../entities/Pickup.js';
 
 // Owns the currently loaded map: static scene content, collision grid, and
 // the live entity list. Combat-area queries used by players/enemies live
@@ -56,6 +59,49 @@ export class World {
   removeEntityMesh(entity) {
     if (entity.mesh) this.game.scene.remove(entity.mesh);
     entity.dispose();
+  }
+
+  // Instantiates everything declared in the map definition. Called by
+  // Game.enterMap after the player has been re-added.
+  spawnMapEntities() {
+    const flags = this.game.progress.flags;
+    for (const def of this.mapDef.entities || []) {
+      switch (def.type) {
+        case 'player_spawn':
+          break;
+        case 'skeleton':
+        case 'skeleton_archer':
+        case 'skeleton_mage': {
+          const e = createEnemy(this.game, def.type, (def.x + 0.5) * TILE, (def.y + 0.5) * TILE);
+          e.roomId = def.room ?? null;
+          this.addEntity(e);
+          break;
+        }
+        case 'boss1':
+        case 'boss2':
+        case 'boss3': {
+          if (flags.has(`${this.mapDef.id}_boss_dead`)) break;
+          const b = createBoss(this.game, def.type, (def.x + 0.5) * TILE, (def.y + 0.5) * TILE);
+          b.roomId = def.room ?? null;
+          this.addEntity(b);
+          break;
+        }
+        case 'pickup': {
+          if (def.id && flags.has(def.id)) break;
+          this.addEntity(new Pickup(this.game, (def.x + 0.5) * TILE, (def.y + 0.5) * TILE,
+            def.kind, { persist: def.id ?? null }));
+          break;
+        }
+        default: {
+          const e = createInteractable(this.game, def);
+          if (e) this.addEntity(e);
+          break;
+        }
+      }
+    }
+    for (const def of this.mapDef.doors || []) {
+      this.addEntity(new Door(this.game, def));
+    }
   }
 
   spawnPoint(spawnId) {

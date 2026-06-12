@@ -14,14 +14,17 @@ async function boot() {
   const game = new Game(document.getElementById('game'));
   window.__game = game; // dev/testing hook
 
-  // M1: drop straight into the test map; title screen arrives with Menus.
+  game.start(); // shows the title screen
+
+  // dev shortcut: ?map=dungeon1 skips the title/intro
   const params = new URLSearchParams(location.search);
-  game.enterMap(params.get('map') || 'test', null);
-  game.setState('PLAYING');
-  game.start();
+  if (params.get('map')) {
+    game.menus.hide();
+    game.progress.location = { map: params.get('map'), spawn: params.get('spawn') || null };
+    game.beginPlay();
+  }
 
   loadingEl.classList.add('hidden');
-  document.getElementById('hud').classList.remove('hidden');
 }
 
 boot().catch((err) => {
