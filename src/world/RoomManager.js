@@ -70,6 +70,7 @@ export class RoomManager {
     const boss = hostiles.find((e) => e.isBoss);
     if (boss) {
       this.game.events.emit('boss-bar', { show: true, hp: boss.hp, maxHp: boss.maxHp });
+      this.game.events.emit('music', 'boss');
     } else {
       this.game.events.emit('boss-bar', { show: false });
     }

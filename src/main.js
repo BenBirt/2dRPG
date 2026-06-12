@@ -1,5 +1,6 @@
 import { Assets } from './core/Assets.js';
 import { Game } from './core/Game.js';
+import { AudioSystem } from './audio/Audio.js';
 
 const loadingEl = document.getElementById('loading');
 const barEl = document.getElementById('loading-bar');
@@ -12,6 +13,7 @@ async function boot() {
   });
 
   const game = new Game(document.getElementById('game'));
+  game.audio = new AudioSystem(game);
   window.__game = game; // dev/testing hook
 
   game.start(); // shows the title screen

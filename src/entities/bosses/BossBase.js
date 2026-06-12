@@ -34,6 +34,7 @@ export class BossBase extends Enemy {
     const mapId = this.game.world.mapDef.id;
     this.game.setFlag(`${mapId}_boss_dead`);
     this.game.events.emit('enemy-died', this);
+    this.game.events.emit('music', this.game.world.mapDef.music ?? 'dungeon');
     this.onBossDeath();
   }
 
