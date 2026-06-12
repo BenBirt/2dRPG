@@ -179,8 +179,12 @@ export class Game {
     if (!this.player) this.player = new Player(this, spawn.x, spawn.z);
     this.player.pos.set(spawn.x, 0, spawn.z);
     this.player.knock.set(0, 0);
+    this.player.iframes = 0;
+    if (this.progress.hearts > 0) this.player.alive = true;
     if (spawn.dir !== undefined) this.player.facing = spawn.dir;
     if (this.player.state !== 'idle') this.player.releaseScripted();
+    this.player.mesh.visible = true;
+    this._deathTimer = null;
     this.world.addEntity(this.player);
     this.world.spawnMapEntities();
 

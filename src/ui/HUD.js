@@ -61,6 +61,10 @@ export class HUD {
     this._setCounter(this._counterBombs,  p.bombs,   p.hasBombs);
     this._setCounter(this._counterRupees, p.rupees,  true);
 
+    // highlight which item the item-button currently fires
+    this._counterArrows?.classList.toggle('equipped', p.equipped === 'bow');
+    this._counterBombs?.classList.toggle('equipped', p.equipped === 'bombs');
+
     // Touch item button label
     if (this._btnItem) {
       if (p.equipped === 'bow')   this._btnItem.textContent = '🏹';
