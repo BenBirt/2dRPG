@@ -112,7 +112,12 @@ export class Game {
   newGame() {
     this.progress = newProgress();
     this.menus.hide();
-    this.menus.showIntro(INTRO_PAGES, () => {
+    const controls = this.touch.enabled
+      ? `Drag on the left half of the screen to move.
+B — sword / talk / open.  A — equipped item.  ⇄ — switch item.`
+      : `Move with WASD or the arrow keys.
+Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc — pause.`;
+    this.menus.showIntro([...INTRO_PAGES, controls], () => {
       this.beginPlay();
       this.autosave();
     });
