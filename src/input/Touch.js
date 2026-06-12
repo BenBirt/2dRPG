@@ -59,7 +59,9 @@ export class Touch {
     window.addEventListener('pointerdown', (e) => {
       if (stickPointerId !== null) return; // already tracking a stick
       if (e.clientX >= window.innerWidth / 2) return; // right half
-      if (e.target.classList.contains('touch-btn')) return; // button element
+      // only touches that land on the game canvas spawn the stick (menus,
+      // dialog boxes and buttons sit above it and catch their own events)
+      if (e.target.id !== 'game') return;
 
       stickPointerId = e.pointerId;
       originX = e.clientX;

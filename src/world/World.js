@@ -218,7 +218,7 @@ export class World {
       const dx = e.x - player.x;
       const dz = e.z - player.z;
       const dist = Math.hypot(dx, dz);
-      const reach = 1.1 + e.radius;
+      const reach = 1.4 + e.radius;
       if (dist > reach) continue;
       if (dist > 0.3 && (dx * f.x + dz * f.z) / dist < 0.25) continue;
       if (dist < bestDist) { best = e; bestDist = dist; }
