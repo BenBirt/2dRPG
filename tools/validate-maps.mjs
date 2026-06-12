@@ -189,11 +189,12 @@ function validateMap(map, allMaps, knownSets, allEntityIds, allDoorIds) {
     const def = cellDef(ent.x, ent.y);
 
     if (ent.type === 'cracked_wall') {
-      // Must sit on a solid cell with wallStyle 'dressed' or 'cliff'
-      if (!def || !def.solid) {
-        err(`entity[${ei}] cracked_wall '${ent.id ?? ''}' at (${ent.x},${ent.y}) must be on a solid cell`);
-      } else if (def.wallStyle !== 'dressed' && def.wallStyle !== 'cliff') {
-        err(`entity[${ei}] cracked_wall '${ent.id ?? ''}' at (${ent.x},${ent.y}) must be on a cell with wallStyle 'dressed' or 'cliff' (got '${def.wallStyle}')`);
+      // Sits on a WALKABLE cell and blocks it dynamically until bombed
+      if (!def || def.solid) {
+        err(`entity[${ei}] cracked_wall '${ent.id ?? ''}' at (${ent.x},${ent.y}) must be on a walkable cell (it blocks it dynamically)`);
+      }
+      if (!ent.dir) {
+        err(`entity[${ei}] cracked_wall '${ent.id ?? ''}' needs a dir (n/s/e/w)`);
       }
     } else if (WALKABLE_TYPES.has(ent.type)) {
       // Must NOT be solid

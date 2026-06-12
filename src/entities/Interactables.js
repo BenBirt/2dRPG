@@ -180,8 +180,9 @@ export class CrackedWall extends Entity {
 
     this.mesh = new THREE.Group();
     if (!this.destroyed) {
+      // full 4-unit length: the ends embed into the neighbouring solid cells
       const model = Assets.get('wall_cracked').scene.clone();
-      model.scale.set(0.5, 0.55, 0.6);
+      model.scale.set(1, 0.55, 0.6);
       this.mesh.add(model);
       game.world.collision.addBlocker(`crack:${def.id}`, def.x, def.y);
     } else {
