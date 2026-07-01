@@ -3,7 +3,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Assets } from '../../core/Assets.js';
 import { Entity, AnimController } from '../Entity.js';
 import { DROPS } from '../../data/balance.js';
-import { makeBlobShadow } from '../../world/Procedural.js';
+import { enableShadows } from '../../world/Procedural.js';
 
 // Base enemy: IDLE / WANDER / CHASE / ATTACK / HURT / DEAD state machine.
 // Subclasses override _think (chase/attack behavior) and _attack.
@@ -19,10 +19,9 @@ export class Enemy extends Entity {
     const gltf = Assets.get(cfg.model);
     const model = cloneSkinned(gltf.scene);
     model.scale.setScalar(cfg.scale);
+    enableShadows(model, { receive: false });
     this.mesh = new THREE.Group();
     this.mesh.add(model);
-    this.shadow = makeBlobShadow(this.radius + 0.1);
-    this.mesh.add(this.shadow);
     this.model = model;
     this.anim = new AnimController(model, gltf.animations);
 
