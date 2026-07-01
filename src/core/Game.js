@@ -227,7 +227,7 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
 
     const spawn = this.world.spawnPoint(spawnId);
     if (!this.player) this.player = new Player(this, spawn.x, spawn.z);
-    this.player.pos.set(spawn.x, 0, spawn.z);
+    this.player.pos.set(spawn.x, this.world.terrainHeightAt(spawn.x, spawn.z), spawn.z);
     this.player.knock.set(0, 0);
     this.player.iframes = 0;
     if (this.progress.hearts > 0) this.player.alive = true;

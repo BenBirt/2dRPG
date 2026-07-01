@@ -1,5 +1,6 @@
 // Every gameplay tunable in one place so balancing passes touch one file.
 export const TILE = 2; // world units per grid cell
+export const STEP = 1.5; // world units of rise per elevation level
 
 export const PLAYER = {
   speed: 6,

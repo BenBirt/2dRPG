@@ -88,7 +88,7 @@ export class Enemy extends Entity {
 
     if (this.state === 'dead') {
       this.deathTime += dt;
-      this.pos.y = Math.min(0, this.pos.y); // stay grounded
+      this.pos.y = this.game.world.terrainHeightAt(this.pos.x, this.pos.z);
       if (this.deathTime > 1.3) this.removed = true;
       this.syncMesh();
       return;
@@ -102,6 +102,7 @@ export class Enemy extends Entity {
       this.setState('chase', 'Running_A');
     }
 
+    this.pos.y = this.game.world.terrainHeightAt(this.pos.x, this.pos.z);
     this._touchDamage();
     this.updateBlink();
     this.syncMesh();

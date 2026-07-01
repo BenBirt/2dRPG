@@ -134,6 +134,104 @@ export function makeCliffGeometry(tile, height) {
   return geo;
 }
 
+// A sloped floor tile bridging two elevations along `dir` (uphill). Centred on
+// the cell origin; caller places it. Coloured to match the floor it joins.
+export function makeRampGeometry(tile, loY, hiY, dir, color) {
+  const geo = new THREE.PlaneGeometry(tile, tile, 1, 1).toNonIndexed();
+  geo.deleteAttribute('uv');
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const lx = pos.getX(i) / tile + 0.5; // 0..1 across cell (west→east)
+    const lz = pos.getZ(i) / tile + 0.5; // 0..1 across cell (north→south)
+    let t;
+    switch (dir) {
+      case 'n': t = 1 - lz; break;
+      case 's': t = lz; break;
+      case 'w': t = 1 - lx; break;
+      case 'e': t = lx; break;
+      default: t = 0;
+    }
+    pos.setY(i, loY + (hiY - loY) * t);
+  }
+  geo.computeVertexNormals();
+  paint(geo, color, 0.04);
+  return geo;
+}
+
+// Small decorative ground detail (flowers / mushrooms / pebbles) chosen by
+// seed. Non-solid, non-interactive — pure visual richness.
+export function makeDetailGeometry(seed, hsh) {
+  const kind = seed % 3;
+  if (kind === 0) {
+    // flower cluster: thin stems + bright caps
+    const parts = [];
+    const colors = [0xe8d23a, 0xe86a6a, 0xd07adf, 0xf0f0f0];
+    const n = 2 + (seed % 3);
+    for (let i = 0; i < n; i++) {
+      const ox = ((hsh * (i + 3) * 37) % 1 - 0.5) * 0.8;
+      const oz = ((hsh * (i + 7) * 53) % 1 - 0.5) * 0.8;
+      const stem = paint(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 3).toNonIndexed(), 0x4c8a3a);
+      stem.translate(ox, 0.15, oz);
+      const cap = paint(new THREE.IcosahedronGeometry(0.09, 0).toNonIndexed(), colors[(seed + i) % colors.length], 0.03);
+      cap.scale(1, 0.6, 1);
+      cap.translate(ox, 0.32, oz);
+      parts.push(stem, cap);
+    }
+    return merged(parts);
+  }
+  if (kind === 1) {
+    // mushroom trio
+    const parts = [];
+    for (let i = 0; i < 3; i++) {
+      const ox = ((hsh * (i + 2) * 29) % 1 - 0.5) * 0.7;
+      const oz = ((hsh * (i + 5) * 41) % 1 - 0.5) * 0.7;
+      const s = 0.6 + ((seed + i) % 3) * 0.2;
+      const stem = paint(new THREE.CylinderGeometry(0.04, 0.05, 0.14 * s, 5).toNonIndexed(), 0xe8e0cc);
+      stem.translate(ox, 0.07 * s, oz);
+      const cap = paint(new THREE.SphereGeometry(0.11 * s, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2).toNonIndexed(), 0xc0432f, 0.03);
+      cap.translate(ox, 0.14 * s, oz);
+      parts.push(stem, cap);
+    }
+    return merged(parts);
+  }
+  // pebble cluster
+  const parts = [];
+  for (let i = 0; i < 3; i++) {
+    const ox = ((hsh * (i + 1) * 23) % 1 - 0.5) * 0.9;
+    const oz = ((hsh * (i + 4) * 61) % 1 - 0.5) * 0.9;
+    const g = paint(new THREE.IcosahedronGeometry(0.1 + (i % 2) * 0.05, 0).toNonIndexed(), 0x9a968c, 0.05);
+    g.scale(1.2, 0.6, 1.1);
+    g.translate(ox, 0.05, oz);
+    parts.push(g);
+  }
+  return merged(parts);
+}
+
+// Animated waterfall sheet: a vertical translucent plane down a cliff face.
+// Returned as a Mesh (animated by World via userData.scroll).
+const waterfallMat = new THREE.MeshStandardMaterial({
+  color: 0x8fc4e8, transparent: true, opacity: 0.72, roughness: 0.1, metalness: 0.15,
+  emissive: 0x244a66, emissiveIntensity: 0.3,
+});
+export function makeWaterfallGeometry(tile, topY, botY, dir) {
+  const height = Math.max(topY - botY, 0.5);
+  const geo = new THREE.PlaneGeometry(tile * 0.9, height, 1, 6);
+  // face outward along dir; default plane faces +z
+  const rot = { s: 0, n: Math.PI, e: -Math.PI / 2, w: Math.PI / 2 }[dir] ?? 0;
+  const mesh = new THREE.Mesh(geo, waterfallMat.clone());
+  mesh.rotation.y = rot;
+  mesh.position.y = (topY + botY) / 2;
+  // nudge to the cliff face edge
+  const off = tile / 2 - 0.02;
+  if (dir === 's') mesh.position.z = off;
+  else if (dir === 'n') mesh.position.z = -off;
+  else if (dir === 'e') mesh.position.x = off;
+  else if (dir === 'w') mesh.position.x = -off;
+  mesh.userData.waterfall = true;
+  return mesh;
+}
+
 // Ground cell for grass/dirt. Subdivided and shaded PER VERTEX from smooth
 // world-position noise so neighbouring cells blend into an organic field
 // instead of a flat checkerboard. `cx,cz` are the cell's world centre.

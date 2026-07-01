@@ -27,11 +27,18 @@ export class World {
     const built = buildMap(mapDef);
     this.group = built.group;
     this.collision = built.collision;
+    this.heightfield = built.heightfield;
     this.cuttables = built.cuttables;
     this.waterMesh = built.waterMesh;
+    this.waterfalls = built.waterfalls || [];
     this.cols = built.cols;
     this.rows = built.rows;
     this.game.scene.add(this.group);
+  }
+
+  // Ground elevation at a world position (0 for flat maps).
+  terrainHeightAt(x, z) {
+    return this.heightfield ? this.heightfield.heightAt(x, z) : 0;
   }
 
   unload() {
@@ -52,6 +59,12 @@ export class World {
 
   addEntity(entity) {
     this.entities.push(entity);
+    // seat the entity on the terrain (players/enemies re-sample every frame;
+    // static entities keep this spawn height)
+    if (entity.groundY === undefined) {
+      entity.groundY = this.terrainHeightAt(entity.pos.x, entity.pos.z);
+      if (entity.pos.y === 0) entity.pos.y = entity.groundY;
+    }
     if (entity.mesh) {
       // props/chests/doors/npcs cast shadows (characters set their own flags
       // in their constructors; re-applying is harmless)
@@ -60,6 +73,7 @@ export class World {
           if (n.isMesh || n.isSkinnedMesh) n.castShadow = true;
         });
       }
+      entity.syncMesh?.();
       this.game.scene.add(entity.mesh);
     }
     return entity;
@@ -125,6 +139,11 @@ export class World {
     this.time += dt;
     if (this.waterMesh) {
       this.waterMesh.position.y = Math.sin(this.time * 1.4) * 0.035;
+    }
+    // scroll waterfall UVs downward for a flowing look
+    for (const wf of this.waterfalls) {
+      if (wf.material.map) wf.material.map.offset.y = (this.time * 0.9) % 1;
+      wf.material.emissiveIntensity = 0.28 + Math.sin(this.time * 6) * 0.06;
     }
 
     for (const e of this.entities) {

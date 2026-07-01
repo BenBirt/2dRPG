@@ -124,6 +124,7 @@ export class Player extends Entity {
         break;
     }
 
+    this.pos.y = this.game.world.terrainHeightAt(this.pos.x, this.pos.z);
     this.updateBlink();
     this.syncMesh();
   }
