@@ -46,21 +46,52 @@ function transformed(geo, x, y, z, scale = 1, rotY = 0) {
   return geo.applyMatrix4(m);
 }
 
-// A pine-ish tree: trunk + two foliage cones. ~60 tris.
+// A rounded storybook tree: tapered trunk + clustered foliage blobs. Three
+// silhouettes (round / tall / broad) chosen by seed, each with its own green,
+// for a varied canopy instead of a field of identical cones. ~120 tris.
+const FOLIAGE_GREENS = [0x4f9a41, 0x3f8636, 0x5aa84c, 0x468f3d, 0x63ad50];
+
 export function makeTreeGeometry(seed = 0) {
-  const s = 0.9 + ((seed * 37) % 10) / 40;
+  const rnd = (n) => ((Math.sin((seed + 1) * (n * 97.13 + 3.7)) * 43758.5453) % 1 + 1) % 1;
+  const s = 0.85 + rnd(1) * 0.5;
+  const shape = seed % 3;
+  const green = FOLIAGE_GREENS[seed % FOLIAGE_GREENS.length];
+  const dark = new THREE.Color(green).multiplyScalar(0.82).getHex();
+
   const trunk = paint(
-    new THREE.CylinderGeometry(0.16, 0.22, 0.7, 6).toNonIndexed(),
-    0x6e4a2e, 0.03
+    new THREE.CylinderGeometry(0.13, 0.2, 0.85, 6).toNonIndexed(), 0x7a5230, 0.03
   );
-  trunk.translate(0, 0.35, 0);
-  const lower = paint(new THREE.ConeGeometry(0.95, 1.2, 7).toNonIndexed(), 0x3f7d3a, 0.04);
-  lower.translate(0, 1.15, 0);
-  const upper = paint(new THREE.ConeGeometry(0.65, 1.0, 7).toNonIndexed(), 0x4c9145, 0.04);
-  upper.translate(0, 1.85, 0);
-  const geo = merged([trunk, lower, upper]);
+  trunk.translate(0, 0.42, 0);
+  const parts = [trunk];
+
+  const blob = (r, y, ox, oz, detail, col) => {
+    const g = paint(new THREE.IcosahedronGeometry(r, detail).toNonIndexed(), col, 0.04);
+    g.scale(1, 0.92, 1);
+    g.translate(ox, y, oz);
+    parts.push(g);
+  };
+
+  if (shape === 0) {
+    // round bushy canopy — a cluster of overlapping blobs
+    blob(0.85, 1.35, 0, 0, 1, green);
+    blob(0.6, 1.15, 0.55, 0.2, 1, dark);
+    blob(0.58, 1.2, -0.5, -0.3, 1, dark);
+    blob(0.5, 1.75, 0.1, 0.1, 1, green);
+  } else if (shape === 1) {
+    // tall stacked canopy
+    blob(0.7, 1.25, 0, 0, 1, dark);
+    blob(0.62, 1.75, 0.1, 0.05, 1, green);
+    blob(0.46, 2.2, -0.05, 0, 1, green);
+  } else {
+    // broad low canopy
+    blob(0.95, 1.2, 0, 0, 1, green);
+    blob(0.62, 1.05, 0.7, 0.35, 1, dark);
+    blob(0.62, 1.05, -0.65, -0.35, 1, dark);
+  }
+
+  const geo = merged(parts);
   geo.scale(s, s, s);
-  geo.rotateY((seed % 7) * 0.9);
+  geo.rotateY(rnd(2) * Math.PI * 2);
   return geo;
 }
 
@@ -73,16 +104,25 @@ export function makeRockGeometry(seed = 0) {
   return geo;
 }
 
-// Tall-grass tuft: three crossed quads. Used as InstancedMesh geometry.
+// Cuttable grass tuft: a small cluster of upright blades that reads as a
+// leafy bush from the tilted top-down camera. Used as InstancedMesh geometry.
 export function makeGrassTuftGeometry() {
   const parts = [];
-  for (let i = 0; i < 3; i++) {
-    const quad = new THREE.PlaneGeometry(0.55, 0.65).toNonIndexed();
-    paint(quad, 0x4d8f3f, 0.06);
-    quad.translate(0, 0.32, 0);
-    quad.rotateY((i * Math.PI) / 3);
-    parts.push(quad);
-  }
+  const blade = (ox, oz, h, tilt, dir, col) => {
+    const g = new THREE.ConeGeometry(0.14, h, 4).toNonIndexed();
+    paint(g, col, 0.05);
+    g.rotateZ(tilt);
+    g.rotateY(dir);
+    g.translate(ox, h * 0.42, oz);
+    parts.push(g);
+  };
+  const light = 0x7cc255;
+  const mid = 0x66ad45;
+  blade(0, 0, 0.62, 0, 0, light);
+  blade(0.16, 0.05, 0.5, 0.3, 0.4, mid);
+  blade(-0.15, -0.04, 0.52, -0.32, 1.1, mid);
+  blade(0.05, -0.16, 0.46, 0.28, 2.0, light);
+  blade(-0.07, 0.15, 0.44, -0.26, 2.6, mid);
   return merged(parts);
 }
 
@@ -94,27 +134,43 @@ export function makeCliffGeometry(tile, height) {
   return geo;
 }
 
-// Ground quad (one cell) for grass/dirt, with slight per-vertex tint.
-export function makeGroundCellGeometry(tile, color, seed) {
-  const geo = new THREE.PlaneGeometry(tile, tile).toNonIndexed();
+// Ground cell for grass/dirt. Subdivided and shaded PER VERTEX from smooth
+// world-position noise so neighbouring cells blend into an organic field
+// instead of a flat checkerboard. `cx,cz` are the cell's world centre.
+const _tmpCol = new THREE.Color();
+function groundNoise(x, z) {
+  // two octaves of cheap value noise, range ~[-1,1]
+  const n1 = Math.sin(x * 0.7 + 1.3) * Math.cos(z * 0.6 - 0.7);
+  const n2 = Math.sin(x * 1.9 - 2.1) * Math.cos(z * 2.3 + 0.4);
+  return n1 * 0.7 + n2 * 0.3;
+}
+
+export function makeGroundCellGeometry(tile, color, cx, cz) {
+  const geo = new THREE.PlaneGeometry(tile, tile, 2, 2).toNonIndexed();
   geo.deleteAttribute('uv');
   geo.rotateX(-Math.PI / 2);
-  const col = new THREE.Color(color);
-  const count = geo.attributes.position.count;
+  const base = new THREE.Color(color);
+  const pos = geo.attributes.position;
+  const count = pos.count;
   const colors = new Float32Array(count * 3);
-  const j = ((Math.sin(seed * 12.9898) * 43758.5453) % 1) * 0.045;
   for (let i = 0; i < count; i++) {
-    colors[i * 3] = THREE.MathUtils.clamp(col.r + j, 0, 1);
-    colors[i * 3 + 1] = THREE.MathUtils.clamp(col.g + j, 0, 1);
-    colors[i * 3 + 2] = THREE.MathUtils.clamp(col.b + j, 0, 1);
+    const wx = cx + pos.getX(i);
+    const wz = cz + pos.getZ(i);
+    const n = groundNoise(wx, wz);           // -1..1
+    const shade = 1 + n * 0.1;               // brightness wobble
+    const warm = n * 0.03;                    // slight hue drift
+    _tmpCol.copy(base).multiplyScalar(shade);
+    colors[i * 3] = THREE.MathUtils.clamp(_tmpCol.r + warm, 0, 1);
+    colors[i * 3 + 1] = THREE.MathUtils.clamp(_tmpCol.g, 0, 1);
+    colors[i * 3 + 2] = THREE.MathUtils.clamp(_tmpCol.b - warm * 0.5, 0, 1);
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   return geo;
 }
 
 export const GROUND_COLORS = {
-  grass: 0x5da14c,
-  dirt: 0xa3815a,
+  grass: 0x63ad4e,
+  dirt: 0xb08a5c,
 };
 
 // Shared blob-shadow texture (radial gradient), created once.
@@ -131,6 +187,17 @@ export function getBlobShadowTexture() {
   ctx.fillRect(0, 0, 64, 64);
   blobTexture = new THREE.CanvasTexture(c);
   return blobTexture;
+}
+
+// Enable real cast/receive shadows on every mesh under an object.
+export function enableShadows(obj, { cast = true, receive = true } = {}) {
+  obj.traverse((n) => {
+    if (n.isMesh || n.isSkinnedMesh) {
+      n.castShadow = cast;
+      n.receiveShadow = receive;
+    }
+  });
+  return obj;
 }
 
 export function makeBlobShadow(radius = 0.5) {

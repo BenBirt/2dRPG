@@ -76,6 +76,8 @@ class StaticBatcher {
       const geo = mergeGeometries(geos, false);
       const mesh = new THREE.Mesh(geo, material);
       mesh.matrixAutoUpdate = false;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       group.add(mesh);
     }
     return group;
@@ -103,6 +105,8 @@ export class CuttableField {
     this.indexByCell = new Map();
     this.mesh = new THREE.InstancedMesh(geometry, material, Math.max(cells.length, 1));
     this.mesh.count = cells.length;
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = true;
     const m = new THREE.Matrix4();
     cells.forEach(({ c, r }, i) => {
       const rot = cellHash(c, r) * Math.PI * 2;
@@ -174,8 +178,10 @@ export function buildMap(mapDef) {
             break;
           case 'grass':
           case 'dirt':
+            // pass the cell's world centre so per-vertex noise is continuous
+            // across cell borders (color is baked before the placement matrix)
             batcher.addProcedural('ground', procMaterial,
-              makeGroundCellGeometry(TILE, GROUND_COLORS[def.floor], h * 1000),
+              makeGroundCellGeometry(TILE, GROUND_COLORS[def.floor], x, z),
               placeMatrix(x, 0.001, z));
             break;
           case 'water':
@@ -260,9 +266,10 @@ export function buildMap(mapDef) {
     waterMesh = new THREE.Mesh(
       mergeGeometries(geos, false),
       new THREE.MeshStandardMaterial({
-        color: 0x2f6fb8, transparent: true, opacity: 0.85, roughness: 0.35, metalness: 0,
+        color: 0x2f6fb8, transparent: true, opacity: 0.82, roughness: 0.18, metalness: 0.1,
       })
     );
+    waterMesh.receiveShadow = true;
     group.add(waterMesh);
   }
 

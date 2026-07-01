@@ -15,9 +15,9 @@ import { Sfx } from './Sfx.js';
 import { Music } from './Music.js';
 
 const MUTE_KEY = 'hollowisle.muted';
-const MASTER_GAIN_LEVEL = 0.5;
-const MUSIC_GAIN_LEVEL  = 0.55;
-const SFX_GAIN_LEVEL    = 0.8;
+const MASTER_GAIN_LEVEL = 0.9;
+const MUSIC_GAIN_LEVEL  = 0.85;
+const SFX_GAIN_LEVEL    = 1.0;
 
 export class AudioSystem {
   /**

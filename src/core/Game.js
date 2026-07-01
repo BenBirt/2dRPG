@@ -44,15 +44,36 @@ export class Game {
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x10141f);
-    this.scene.fog = new THREE.Fog(0x10141f, 30, 60);
+    this.scene.background = new THREE.Color(0x8ec6e8);
+    this.scene.fog = new THREE.Fog(0x8ec6e8, 42, 88);
 
-    this.hemi = new THREE.HemisphereLight(0xcfe0ff, 0x4a4036, 1.25);
-    this.sun = new THREE.DirectionalLight(0xfff1d8, 1.7);
-    this.sun.position.set(6, 12, 4);
-    this.scene.add(this.hemi, this.sun);
+    this.hemi = new THREE.HemisphereLight(0xcfe6ff, 0x5a6b3a, 1.05);
+    this.sun = new THREE.DirectionalLight(0xfff0d0, 2.1);
+    this.sun.position.set(18, 30, 12);
+    this.sun.castShadow = true;
+    // smaller shadow map on phones (still crisp thanks to the tight, player-
+    // following frustum); full resolution on desktop
+    const shadowRes = window.matchMedia('(pointer: coarse)').matches ? 1024 : 2048;
+    this.sun.shadow.mapSize.set(shadowRes, shadowRes);
+    this.sun.shadow.bias = -0.0006;
+    this.sun.shadow.normalBias = 0.03;
+    this.sun.shadow.radius = 3;
+    const sc = this.sun.shadow.camera;
+    sc.near = 1;
+    sc.far = 90;
+    sc.left = -22; sc.right = 22; sc.top = 22; sc.bottom = -22;
+    sc.updateProjectionMatrix();
+    this.scene.add(this.sun.target);
+    // a soft fill from the opposite side keeps shadowed faces from going flat black
+    this.fill = new THREE.DirectionalLight(0xbcd0ff, 0.35);
+    this.fill.position.set(-14, 12, -10);
+    this.scene.add(this.hemi, this.sun, this.fill);
 
     this.cameraRig = new CameraRig(window.innerWidth / window.innerHeight);
     this.input = new Input();
@@ -171,9 +192,33 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
 
   // ------------------------------------------------------ map / world
 
+  applyEnvironment(mapDef) {
+    const dungeon = !!mapDef.rooms?.length;
+    if (dungeon) {
+      // torch-lit crypt: cool dark air, tighter fog, dimmer warmer sun
+      this.scene.background.set(0x161a26);
+      this.scene.fog.color.set(0x161a26);
+      this.scene.fog.near = 16; this.scene.fog.far = 46;
+      this.hemi.color.set(0x9fb0d8); this.hemi.groundColor.set(0x25201a);
+      this.hemi.intensity = 0.8;
+      this.sun.color.set(0xffd9a0); this.sun.intensity = 1.5;
+      this.fill.intensity = 0.28;
+    } else {
+      // open-air isle: bright sky, long fog, strong warm sun
+      this.scene.background.set(0x8ec6e8);
+      this.scene.fog.color.set(0x9ecbe8);
+      this.scene.fog.near = 42; this.scene.fog.far = 92;
+      this.hemi.color.set(0xcfe6ff); this.hemi.groundColor.set(0x5a6b3a);
+      this.hemi.intensity = 1.05;
+      this.sun.color.set(0xfff0d0); this.sun.intensity = 2.1;
+      this.fill.intensity = 0.35;
+    }
+  }
+
   enterMap(mapId, spawnId) {
     const mapDef = MAPS[mapId];
     if (!mapDef) throw new Error(`Unknown map: ${mapId}`);
+    this.applyEnvironment(mapDef);
     this.world.load(mapDef);
     this.rooms.reset();
     this.cameraRig.setMapBounds(this.world.cols, this.world.rows);
@@ -196,6 +241,11 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
     this.progress.location = { map: mapId, spawn: spawnId };
     this.rooms.update(); // set initial room before first frame
     this.cameraRig.snapTo(this.player.pos);
+    this._followSun();
+    // Compile every material and prime the GPU now, before the first visible
+    // frame, so gameplay doesn't stutter as objects first appear on screen.
+    this.renderer.compile(this.scene, this.cameraRig.camera);
+    this.renderer.render(this.scene, this.cameraRig.camera);
     this.events.emit('map-entered', mapId);
     this.events.emit('music', mapDef.music ?? (mapDef.rooms?.length ? 'dungeon' : 'overworld'));
   }
@@ -204,11 +254,17 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
     if (this.state !== 'PLAYING') return;
     this.setState('TRANSITION');
     this.fadeEl.classList.add('on');
+    // Build the new map, compile its shaders, and warm the GPU while the
+    // screen is fully black — otherwise the first few rendered frames stutter
+    // as three.js lazily compiles materials and uploads skinned meshes.
     setTimeout(() => {
-      this.enterMap(mapId, spawnId);
+      this.enterMap(mapId, spawnId); // builds, compiles, and primes while black
       this.autosave();
-      this.fadeEl.classList.remove('on');
-      this.setState('PLAYING');
+      // hold black one extra beat so the priming frame never shows through
+      setTimeout(() => {
+        this.fadeEl.classList.remove('on');
+        this.setState('PLAYING');
+      }, 80);
     }, 240);
   }
 
@@ -418,8 +474,21 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
     }
   }
 
+  // Keep the sun (and its shadow frustum) centred on the player so the
+  // 2048² shadow map stays sharp over the visible area instead of covering
+  // the whole map.
+  _followSun() {
+    if (!this.player) return;
+    const p = this.player.pos;
+    this.sun.target.position.set(p.x, 0, p.z);
+    this.sun.target.updateMatrixWorld();
+    this.sun.position.set(p.x + 18, 30, p.z + 12);
+    this.fill.position.set(p.x - 14, 12, p.z - 10);
+  }
+
   update(dt) {
     this.input.update();
+    if (this.player) this._followSun();
 
     switch (this.state) {
       case 'PLAYING': {

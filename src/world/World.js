@@ -52,7 +52,16 @@ export class World {
 
   addEntity(entity) {
     this.entities.push(entity);
-    if (entity.mesh) this.game.scene.add(entity.mesh);
+    if (entity.mesh) {
+      // props/chests/doors/npcs cast shadows (characters set their own flags
+      // in their constructors; re-applying is harmless)
+      if (!entity.noShadow) {
+        entity.mesh.traverse((n) => {
+          if (n.isMesh || n.isSkinnedMesh) n.castShadow = true;
+        });
+      }
+      this.game.scene.add(entity.mesh);
+    }
     return entity;
   }
 

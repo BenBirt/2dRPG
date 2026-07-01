@@ -166,7 +166,7 @@ export class Music {
         if (step === stepIdx) {
           const freq = midiToFreq(midi);
           const dur = len * this._stepDuration;
-          this._playTone(ctx, gain, 'square', freq, 0.12, t, dur);
+          this._playTone(ctx, gain, 'square', freq, 0.22, t, dur);
         }
       }
     }
@@ -177,7 +177,7 @@ export class Music {
         if (step === stepIdx) {
           const freq = midiToFreq(midi);
           const dur = len * this._stepDuration;
-          this._playTone(ctx, gain, 'triangle', freq, 0.15, t, dur);
+          this._playTone(ctx, gain, 'triangle', freq, 0.28, t, dur);
         }
       }
     }
@@ -188,9 +188,9 @@ export class Music {
         if (step === stepIdx) {
           const freq = midiToFreq(midi);
           const dur = len * this._stepDuration;
-          this._playTone(ctx, gain, 'sine', freq, 0.08, t, dur);
+          this._playTone(ctx, gain, 'sine', freq, 0.15, t, dur);
           // Slight detune for pad shimmer
-          this._playTone(ctx, gain, 'sine', freq * 1.003, 0.04, t, dur);
+          this._playTone(ctx, gain, 'sine', freq * 1.003, 0.08, t, dur);
         }
       }
     }

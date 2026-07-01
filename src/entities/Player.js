@@ -3,7 +3,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Assets } from '../core/Assets.js';
 import { Entity, AnimController } from './Entity.js';
 import { PLAYER } from '../data/balance.js';
-import { makeBlobShadow } from '../world/Procedural.js';
+import { enableShadows } from '../world/Procedural.js';
 
 const ANIM = {
   idle: 'Idle',
@@ -33,9 +33,9 @@ export class Player extends Entity {
     const gltf = Assets.get('knight');
     const model = cloneSkinned(gltf.scene);
     model.scale.setScalar(PLAYER.scale);
+    enableShadows(model, { receive: false });
     this.mesh = new THREE.Group();
     this.mesh.add(model);
-    this.mesh.add(makeBlobShadow(this.radius + 0.15));
     this.anim = new AnimController(model, gltf.animations);
     this.anim.play(ANIM.idle);
     this.syncMesh();
