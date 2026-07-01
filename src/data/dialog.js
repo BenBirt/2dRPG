@@ -96,6 +96,9 @@ export const DIALOG = {
   d1_note: [
     `The handwriting is careful, old: "First shard sleeps with the honored dead. Forgive me. A divided light casts no shadow deep enough to wake what sleeps beneath. — B."`,
   ],
+  d2_entry: [
+    `A warden's ledger, swollen with damp: "Stores for thirty winters. If the pumps fail, the lower vaults go first. If the EYE closes of its own accord… stop reading and run."`,
+  ],
   d2_note: [
     `Water has warped the page, but the words hold: "They call it Heartlight and never ask whose heart. I have heard it beating under the isle. It is not OURS. The light feeds it. I will starve it. — B."`,
   ],

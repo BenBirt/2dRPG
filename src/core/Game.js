@@ -338,11 +338,18 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
       return;
     }
     const f = player.facingVec();
-    const bx = player.x + f.x * 1.3;
-    const bz = player.z + f.z * 1.3;
-    if (this.world.collision.circleHitsSolid(bx, bz, 0.3)) {
-      this.events.emit('sfx', 'denied');
-      return;
+    // prefer a full tile ahead, but fall back closer (or to the player's own
+    // feet) so bombing a wall you're standing against always works
+    let bx = player.x;
+    let bz = player.z;
+    for (const dist of [1.3, 0.65]) {
+      const tx = player.x + f.x * dist;
+      const tz = player.z + f.z * dist;
+      if (!this.world.collision.circleHitsSolid(tx, tz, 0.3)) {
+        bx = tx;
+        bz = tz;
+        break;
+      }
     }
     p.bombs--;
     player.itemCooldown = ITEMS.bombs.cooldown;
