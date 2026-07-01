@@ -211,8 +211,8 @@ export function makeDetailGeometry(seed, hsh) {
 // Animated waterfall sheet: a vertical translucent plane down a cliff face.
 // Returned as a Mesh (animated by World via userData.scroll).
 const waterfallMat = new THREE.MeshStandardMaterial({
-  color: 0x8fc4e8, transparent: true, opacity: 0.72, roughness: 0.1, metalness: 0.15,
-  emissive: 0x244a66, emissiveIntensity: 0.3,
+  color: 0xd6ecfb, transparent: true, opacity: 0.85, roughness: 0.08, metalness: 0.1,
+  emissive: 0x9fd4f0, emissiveIntensity: 0.4, side: THREE.DoubleSide,
 });
 export function makeWaterfallGeometry(tile, topY, botY, dir) {
   const height = Math.max(topY - botY, 0.5);

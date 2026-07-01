@@ -225,15 +225,29 @@ export function buildMap(mapDef) {
           }
           case 'cliff': {
             if (hasOpenNeighbor8(c, r)) {
-              // rise from the ground to meet the tallest floor it borders, so
-              // a raised plateau reads as a solid cliff wall (min WALL_H so
-              // level-0 boundary cliffs keep their scenery height)
-              let top = WALL_H;
+              // find the range of floor levels this cliff borders
+              let lo = Infinity;
+              let hi = -Infinity;
               for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-                if (isOpen(c + dc, r + dr)) top = Math.max(top, hf.level(c + dc, r + dr) * STEP + 0.6);
+                if (!isOpen(c + dc, r + dr)) continue;
+                const lv = hf.level(c + dc, r + dr);
+                lo = Math.min(lo, lv);
+                hi = Math.max(hi, lv);
               }
-              batcher.addProcedural('proc', procMaterial, makeCliffGeometry(TILE, top),
-                placeMatrix(x, 0, z));
+              if (lo === Infinity) { lo = hi = hf.level(c, r); }
+              let baseY, topY;
+              if (hi > lo) {
+                // retaining cliff: a face from the low ground up to the high
+                // plateau surface (small lip above)
+                baseY = lo * STEP;
+                topY = hi * STEP + 0.15;
+              } else {
+                // scenery wall sitting on its own level
+                baseY = lo * STEP;
+                topY = baseY + WALL_H;
+              }
+              batcher.addProcedural('proc', procMaterial, makeCliffGeometry(TILE, topY - baseY),
+                placeMatrix(x, baseY, z));
             }
             break;
           }
