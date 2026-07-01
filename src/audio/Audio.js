@@ -57,10 +57,42 @@ export class AudioSystem {
     this._game.events.on('sfx', name => this._onSfx(name));
     this._game.events.on('music', theme => this._onMusic(theme));
 
-    // Attach one-time unlock listeners for first user gesture
-    this._boundUnlock = () => this._unlock();
-    window.addEventListener('pointerdown', this._boundUnlock, { once: true });
-    window.addEventListener('keydown', this._boundUnlock, { once: true });
+    // Resume on EVERY early interaction (not once): a single missed gesture,
+    // a context that starts suspended, or a mobile browser that ignores the
+    // first attempt should not leave the game silent. The handlers detach
+    // themselves once the context is confirmed running.
+    this._boundResume = () => this._unlock();
+    for (const ev of ['pointerdown', 'touchend', 'touchstart', 'keydown', 'click']) {
+      window.addEventListener(ev, this._boundResume, { passive: true });
+    }
+    // Browsers suspend the context when the tab is backgrounded.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this._ctx?.state === 'suspended') this._ctx.resume();
+    });
+  }
+
+  _detachResume() {
+    for (const ev of ['pointerdown', 'touchend', 'touchstart', 'keydown', 'click']) {
+      window.removeEventListener(ev, this._boundResume);
+    }
+  }
+
+  // iOS mutes the Web Audio API when the hardware ringer switch is silent,
+  // UNLESS a media element has played in the session. A one-shot silent
+  // HTMLAudioElement during the unlock gesture opens the media channel so
+  // music/SFX are audible regardless of the ringer switch.
+  _unmuteIOS() {
+    if (this._iosUnmuted) return;
+    this._iosUnmuted = true;
+    try {
+      const el = document.createElement('audio');
+      el.setAttribute('playsinline', '');
+      // 0.05s of silence, base64 WAV
+      el.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+      el.volume = 0.001;
+      const p = el.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch (_) { /* non-fatal */ }
   }
 
   // ---------------------------------------------------------------------------
@@ -107,21 +139,30 @@ export class AudioSystem {
   // ---------------------------------------------------------------------------
 
   async _unlock() {
-    // Remove the sibling listener that wasn't triggered
-    window.removeEventListener('pointerdown', this._boundUnlock);
-    window.removeEventListener('keydown', this._boundUnlock);
+    // open the iOS media channel every gesture until it takes
+    this._unmuteIOS();
 
-    if (this._unlocked) return;
-    this._unlocked = true;
+    // Already running? make sure the resume listeners are gone and stop.
+    if (this._ctx && this._ctx.state === 'running') {
+      this._detachResume();
+      return;
+    }
 
     try {
-      // Create AudioContext
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      this._ctx = new AudioContextClass();
-
+      if (!this._ctx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        this._ctx = new AudioContextClass();
+      }
       if (this._ctx.state === 'suspended') {
         await this._ctx.resume();
       }
+      // if it still hasn't started, leave the listeners attached to retry on
+      // the next gesture
+      if (this._ctx.state !== 'running') return;
+
+      if (this._unlocked) { this._detachResume(); return; }
+      this._unlocked = true;
+      this._detachResume();
 
       // Build gain graph: sfxGain, musicGain → masterGain → destination
       this._masterGain = this._ctx.createGain();
