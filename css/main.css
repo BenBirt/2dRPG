@@ -1,0 +1,299 @@
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --ui-font: "Trebuchet MS", "Verdana", sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0c14;
+  font-family: var(--ui-font);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- overlays ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0c14;
+  color: #e8e2cf;
+  z-index: 50;
+  text-align: center;
+}
+
+.loading-inner h1 {
+  font-size: clamp(28px, 6vw, 52px);
+  letter-spacing: 0.08em;
+  margin-bottom: 24px;
+  color: #e8e2cf;
+  text-shadow: 0 0 24px rgba(120, 160, 255, 0.35);
+}
+
+.progress {
+  width: min(70vw, 420px);
+  height: 10px;
+  border: 1px solid #4a5470;
+  border-radius: 5px;
+  margin: 0 auto 12px;
+  overflow: hidden;
+}
+
+#loading-bar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #5a8ae0, #8ec0ff);
+  transition: width 0.15s ease-out;
+}
+
+#loading-text { color: #9aa3bd; font-size: 14px; }
+
+/* ---------- HUD ---------- */
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  color: #fff;
+}
+
+#hearts {
+  position: absolute;
+  top: calc(8px + var(--safe-top));
+  left: calc(12px + var(--safe-left));
+  font-size: 22px;
+  letter-spacing: 2px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+#counters {
+  position: absolute;
+  top: calc(38px + var(--safe-top));
+  left: calc(12px + var(--safe-left));
+  font-size: 15px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.counter { margin-right: 12px; }
+.counter b { margin-left: 3px; }
+
+#boss-bar {
+  position: absolute;
+  bottom: calc(18px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(60vw, 420px);
+  height: 12px;
+  border: 2px solid #2a1020;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.55);
+  overflow: hidden;
+}
+
+#boss-bar-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #a01828, #e04848);
+  transition: width 0.2s ease-out;
+}
+
+#interact-prompt {
+  position: absolute;
+  bottom: calc(96px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 12, 20, 0.8);
+  border: 1px solid #4a5470;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 15px;
+}
+
+/* ---------- touch controls ---------- */
+#touch {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+
+#joystick {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.07);
+  display: none;
+}
+
+#joystick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  transform: translate(-50%, -50%);
+}
+
+#touch-buttons {
+  position: absolute;
+  right: calc(18px + var(--safe-right));
+  bottom: calc(26px + var(--safe-bottom));
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.touch-btn {
+  pointer-events: auto;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.85);
+  font-size: 24px;
+  font-family: var(--ui-font);
+  touch-action: none;
+}
+
+.touch-btn:active { background: rgba(255,255,255,0.3); }
+
+.touch-btn.small {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  font-size: 18px;
+}
+
+#btn-pause {
+  top: calc(10px + var(--safe-top));
+  right: calc(12px + var(--safe-right));
+}
+
+#btn-cycle {
+  right: calc(30px + var(--safe-right));
+  bottom: calc(128px + var(--safe-bottom));
+}
+
+/* ---------- dialog ---------- */
+#dialog {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + var(--safe-bottom));
+  transform: translateX(-50%);
+  width: min(92vw, 640px);
+  z-index: 40;
+}
+
+#dialog-box {
+  background: rgba(8, 10, 18, 0.92);
+  border: 2px solid #5a648a;
+  border-radius: 10px;
+  padding: 14px 18px;
+  color: #e8e2cf;
+  font-size: clamp(15px, 2.4vw, 18px);
+  line-height: 1.5;
+  min-height: 72px;
+  position: relative;
+}
+
+#dialog-more {
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  animation: bob 0.8s ease-in-out infinite alternate;
+  color: #8ec0ff;
+}
+
+@keyframes bob {
+  from { transform: translateY(0); }
+  to { transform: translateY(4px); }
+}
+
+/* ---------- menus ---------- */
+#menu { flex-direction: column; gap: 14px; background: rgba(8, 10, 18, 0.88); }
+
+#menu h1 {
+  font-size: clamp(30px, 7vw, 56px);
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+  text-shadow: 0 0 24px rgba(120, 160, 255, 0.35);
+}
+
+#menu h2 { font-size: clamp(20px, 4vw, 30px); margin-bottom: 8px; }
+
+#menu p { color: #9aa3bd; max-width: min(86vw, 560px); line-height: 1.6; }
+
+.menu-btn {
+  font-family: var(--ui-font);
+  font-size: 18px;
+  padding: 12px 34px;
+  min-width: 220px;
+  border-radius: 10px;
+  border: 2px solid #5a648a;
+  background: rgba(255,255,255,0.06);
+  color: #e8e2cf;
+  cursor: pointer;
+}
+
+.menu-btn:hover, .menu-btn:focus { background: rgba(142, 192, 255, 0.18); outline: none; }
+
+/* ---------- fade ---------- */
+#fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+  z-index: 45;
+}
+
+#fade.on { opacity: 1; }
+
+.intro-page {
+  font-size: clamp(16px, 2.6vw, 20px);
+  white-space: pre-line;
+}
+
+/* ---------- hud extras (HUD.js) ---------- */
+.h-full {
+  color: #e23b4a;
+}
+
+.h-half {
+  background: linear-gradient(90deg, #e23b4a 50%, rgba(255,255,255,0.25) 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.h-empty {
+  color: rgba(255,255,255,0.25);
+}

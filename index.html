@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>The Hollow Isle</title>
+<link rel="stylesheet" href="./css/main.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="loading" class="overlay">
+  <div class="loading-inner">
+    <h1>The Hollow Isle</h1>
+    <div class="progress"><div id="loading-bar"></div></div>
+    <p id="loading-text">Loading…</p>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="hearts"></div>
+  <div id="counters">
+    <span id="counter-keys" class="counter hidden">🗝<b>0</b></span>
+    <span id="counter-arrows" class="counter hidden">➳<b>0</b></span>
+    <span id="counter-bombs" class="counter hidden">●<b>0</b></span>
+    <span id="counter-rupees" class="counter hidden">◆<b>0</b></span>
+  </div>
+  <div id="boss-bar" class="hidden"><div id="boss-bar-fill"></div></div>
+  <div id="interact-prompt" class="hidden"></div>
+</div>
+
+<div id="touch" class="hidden">
+  <div id="joystick"><div id="joystick-knob"></div></div>
+  <div id="touch-buttons">
+    <button id="btn-item" class="touch-btn">A</button>
+    <button id="btn-attack" class="touch-btn">B</button>
+  </div>
+  <button id="btn-cycle" class="touch-btn small hidden">⇄</button>
+  <button id="btn-pause" class="touch-btn small">≡</button>
+</div>
+
+<div id="dialog" class="hidden">
+  <div id="dialog-box">
+    <p id="dialog-text"></p>
+    <span id="dialog-more">▼</span>
+  </div>
+</div>
+
+<div id="menu" class="overlay hidden"></div>
+<div id="fade"></div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
