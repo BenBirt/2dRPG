@@ -140,10 +140,19 @@ export class EyeSwitch extends Entity {
       })
     );
     pupil.position.z = 0.24;
+    this.pupil = pupil;
     this.eyeGroup = new THREE.Group();
     this.eyeGroup.add(frame, eye, pupil);
     this.eyeGroup.position.y = 1.5;
     this.mesh.add(this.eyeGroup);
+
+    // an untriggered eye glows and casts a small coloured light so it reads
+    // clearly as a special, shootable target
+    if (!this.triggered) {
+      this.glow = new THREE.PointLight(0x5a7cff, 6, 6, 2);
+      this.glow.position.set(0, 1.5, 0.3);
+      this.mesh.add(this.glow);
+    }
     this.facing = DIRS[def.dir ?? 's'];
     if (this.triggered) this.eyeGroup.scale.z = 0.35; // closed lid look
     this.syncMesh();
@@ -152,9 +161,13 @@ export class EyeSwitch extends Entity {
   update(dt) {
     super.update(dt);
     if (!this.triggered && this.game.player) {
-      // the eye watches the player
+      // the eye watches the player and pulses to draw attention
       const p = this.game.player;
       this.eyeGroup.rotation.y = Math.atan2(p.x - this.x, p.z - this.z) - this.facing;
+      const t = this.game.world.time;
+      const pulse = 1 + Math.sin(t * 4) * 0.5;
+      this.pupil.material.emissiveIntensity = 1.2 * pulse;
+      if (this.glow) this.glow.intensity = 5 * pulse;
     }
   }
 
@@ -162,6 +175,8 @@ export class EyeSwitch extends Entity {
     if (this.triggered || hit.kind !== 'arrow') return false;
     this.triggered = true;
     this.eyeGroup.scale.z = 0.35;
+    this.pupil.material.emissiveIntensity = 0;
+    if (this.glow) { this.mesh.remove(this.glow); this.glow = null; }
     this.game.events.emit('sfx', 'secret');
     this.game.setFlag(this.def.sets);
     return true;

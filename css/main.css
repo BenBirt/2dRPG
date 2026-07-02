@@ -130,6 +130,24 @@ html, body {
   font-size: 15px;
 }
 
+#objective {
+  position: absolute;
+  top: calc(10px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(80vw, 460px);
+  text-align: center;
+  background: rgba(10, 12, 20, 0.6);
+  border: 1px solid rgba(142, 192, 255, 0.35);
+  border-radius: 8px;
+  padding: 5px 14px;
+  font-size: 14px;
+  color: #dfe8ff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+#objective b { color: #ffd86b; font-weight: 600; }
+
 #btn-sound {
   position: absolute;
   top: calc(8px + var(--safe-top));
