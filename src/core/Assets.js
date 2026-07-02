@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // and enemy spawns later are synchronous and instant.
 const MODELS = {
   // characters
-  knight: './assets/models/characters/knight.glb',
+  hero: './assets/models/characters/hero.glb',
   mage: './assets/models/characters/mage.glb',
   rogue: './assets/models/characters/rogue.glb',
   barbarian: './assets/models/characters/barbarian.glb',

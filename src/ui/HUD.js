@@ -11,18 +11,60 @@ export class HUD {
     this._bossBar      = document.getElementById('boss-bar');
     this._bossBarFill  = document.getElementById('boss-bar-fill');
     this._prompt       = document.getElementById('interact-prompt');
+    this._objective    = document.getElementById('objective');
     this._btnItem      = document.getElementById('btn-item');
     this._btnCycle     = document.getElementById('btn-cycle');
 
     // Subscribe to events
     game.events.on('hearts-changed',   ()          => this._renderHearts());
     game.events.on('progress-changed', ()          => this._renderAll());
-    game.events.on('map-entered',      ()          => this._renderCounters());
+    game.events.on('map-entered',      ()          => { this._renderCounters(); this._renderObjective(); });
+    game.events.on('flag-set',         ()          => this._renderObjective());
     game.events.on('boss-bar',         (payload)   => this._onBossBar(payload));
     game.events.on('interact-prompt',  (payload)   => this._onPrompt(payload));
 
     // Initial render
     this._renderAll();
+  }
+
+  // Current-goal signpost, derived from progress flags. Keeps the player
+  // pointed at the next step — especially "shoot the eye" after the bow.
+  _objectiveText() {
+    const p = this.game.progress;
+    const has = (f) => p.flags.has(f);
+    const map = this.game.world?.mapDef?.id;
+    if (has('dungeon3_boss_dead')) return 'The isle is saved. Return to Elder Maren.';
+    if (p.hasBombs && !has('d3_crack')) {
+      return map === 'overworld'
+        ? 'Blast the <b>cracked wall</b> west of the village to reach the Sanctum.'
+        : 'Head back out and bomb the cracked wall west of the village.';
+    }
+    if (has('dungeon2_boss_dead') && !p.hasBombs) return 'Recover the shard from the Drowned Cellars.';
+    if (has('d2_gate_open') && !has('dungeon2_boss_dead')) {
+      return 'Enter the <b>Drowned Cellars</b> through the east gate.';
+    }
+    if (p.hasBow && !has('d2_gate_open')) {
+      return map === 'overworld'
+        ? 'Loose an <b>arrow</b> at the glowing <b>warden-eye</b> beside the east gate to open it.'
+        : 'Leave the crypt — a warden-eye by the east gate answers only to an arrow.';
+    }
+    if (!p.hasBow && !has('dungeon1_boss_dead')) {
+      return map === 'overworld'
+        ? 'Seek the first shard in the <b>Bramble Crypt</b>, north through the wood.'
+        : '';
+    }
+    return '';
+  }
+
+  _renderObjective() {
+    if (!this._objective) return;
+    const text = this._objectiveText();
+    if (text) {
+      this._objective.innerHTML = text;
+      this._objective.classList.remove('hidden');
+    } else {
+      this._objective.classList.add('hidden');
+    }
   }
 
   // ---- hearts ---------------------------------------------------------------
@@ -99,6 +141,7 @@ export class HUD {
   _renderAll() {
     this._renderHearts();
     this._renderCounters();
+    this._renderObjective();
   }
 
   // ---- boss bar -------------------------------------------------------------

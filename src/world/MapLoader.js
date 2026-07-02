@@ -143,6 +143,7 @@ export function buildMap(mapDef) {
   const batcher = new StaticBatcher();
   const cuttableCells = {}; // kind -> [{c,r}]
   const waterCells = [];
+  const torches = []; // world-space flame positions for dynamic lighting
 
   const at = (c, r) => (c < 0 || r < 0 || c >= cols || r >= rows ? null : grid[r][c]);
   const defAt = (c, r) => {
@@ -270,6 +271,9 @@ export function buildMap(mapDef) {
           : Math.floor(h * 4) * (Math.PI / 2);
         batcher.addModel(def.prop, placeMatrix(x, yc, z, rot));
         if (def.propSolid) collision.setSolid(c, r, true);
+        if (def.prop.startsWith('torch') || def.prop.startsWith('candle')) {
+          torches.push({ x, y: yc + 1.4, z }); // flame height
+        }
       }
 
       // --- cuttables (instanced, destroyable) ---
@@ -360,7 +364,7 @@ export function buildMap(mapDef) {
     group.add(field.mesh);
   }
 
-  return { group, collision, heightfield: hf, waterMesh, waterfalls, cuttables, cols, rows };
+  return { group, collision, heightfield: hf, waterMesh, waterfalls, cuttables, torches, cols, rows };
 }
 
 const capMaterial = new THREE.MeshStandardMaterial({ color: 0x3d3a45, roughness: 1, metalness: 0 });

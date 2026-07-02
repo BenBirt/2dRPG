@@ -30,7 +30,7 @@ export class Player extends Entity {
     this.attackHitSet = null;
     this.itemCooldown = 0;
 
-    const gltf = Assets.get('knight');
+    const gltf = Assets.get('hero');
     const model = cloneSkinned(gltf.scene);
     model.scale.setScalar(PLAYER.scale);
     enableShadows(model, { receive: false });
