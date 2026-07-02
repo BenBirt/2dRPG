@@ -3,10 +3,12 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Assets } from '../core/Assets.js';
 import { CollisionGrid } from './Collision.js';
 import { LEGEND, FLOOR_VARIANTS } from '../data/tiles.js';
-import { TILE } from '../data/balance.js';
+import { TILE, STEP } from '../data/balance.js';
+import { Heightfield } from './Heightfield.js';
 import {
   makeTreeGeometry, makeRockGeometry, makeGrassTuftGeometry,
-  makeCliffGeometry, makeGroundCellGeometry, GROUND_COLORS,
+  makeCliffGeometry, makeGroundCellGeometry, makeRampGeometry, makeDetailGeometry,
+  makeWaterfallGeometry, GROUND_COLORS,
 } from './Procedural.js';
 
 const WALL_H = 2.2;
@@ -99,7 +101,7 @@ function placeMatrix(x, y, z, rotY = 0, sx = 1, sy = 1, sz = 1) {
 
 // Instanced field of cuttable props (grass tufts, pots). Supports removal.
 export class CuttableField {
-  constructor(geometry, material, cells, kind) {
+  constructor(geometry, material, cells, kind, yAt = () => 0) {
     this.kind = kind;
     this.cells = cells; // [{c, r}]
     this.indexByCell = new Map();
@@ -110,7 +112,7 @@ export class CuttableField {
     const m = new THREE.Matrix4();
     cells.forEach(({ c, r }, i) => {
       const rot = cellHash(c, r) * Math.PI * 2;
-      m.makeRotationY(rot).setPosition((c + 0.5) * TILE, 0, (r + 0.5) * TILE);
+      m.makeRotationY(rot).setPosition((c + 0.5) * TILE, yAt(c, r), (r + 0.5) * TILE);
       this.mesh.setMatrixAt(i, m);
       this.indexByCell.set(`${c},${r}`, i);
     });
@@ -137,6 +139,7 @@ export function buildMap(mapDef) {
   const rows = grid.length;
   const cols = grid[0].length;
   const collision = new CollisionGrid(cols, rows, TILE);
+  const hf = new Heightfield(mapDef, cols, rows);
   const batcher = new StaticBatcher();
   const cuttableCells = {}; // kind -> [{c,r}]
   const waterCells = [];
@@ -159,22 +162,31 @@ export function buildMap(mapDef) {
       const x = (c + 0.5) * TILE;
       const z = (r + 0.5) * TILE;
       const h = cellHash(c, r);
+      const yc = hf.level(c, r) * STEP; // this cell's floor elevation
+      const ramp = hf.ramps.get(`${c},${r}`);
 
       if (def.solid) collision.setSolid(c, r, true);
 
       // --- floor surface ---
       const visible = !def.solid || def.wallStyle === 'tree' || def.wallStyle === 'rock'
         || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => isOpen(c + dc, r + dr));
-      if (visible) {
+      if (visible && ramp) {
+        // sloped floor bridging two levels; colour matches the surrounding floor
+        const col = def.floor === 'grass' || def.floor === 'dirt'
+          ? GROUND_COLORS[def.floor] : 0x8a8378;
+        batcher.addProcedural('proc', procMaterial,
+          makeRampGeometry(TILE, ramp.lo * STEP, ramp.hi * STEP, ramp.dir, col),
+          placeMatrix(x, 0, z));
+      } else if (visible) {
         switch (def.floor) {
           case 'stone': {
             const model = pickWeighted(FLOOR_VARIANTS.stone, h);
-            batcher.addModel(model, placeMatrix(x, 0, z, Math.floor(h * 4) * (Math.PI / 2)));
+            batcher.addModel(model, placeMatrix(x, yc, z, Math.floor(h * 4) * (Math.PI / 2)));
             break;
           }
           case 'wood':
             // 4x4 plank piece scaled to one cell so any region shape works
-            batcher.addModel('floor_wood_large', placeMatrix(x, 0, z, 0, 0.5, 1, 0.5));
+            batcher.addModel('floor_wood_large', placeMatrix(x, yc, z, 0, 0.5, 1, 0.5));
             break;
           case 'grass':
           case 'dirt':
@@ -182,7 +194,7 @@ export function buildMap(mapDef) {
             // across cell borders (color is baked before the placement matrix)
             batcher.addProcedural('ground', procMaterial,
               makeGroundCellGeometry(TILE, GROUND_COLORS[def.floor], x, z),
-              placeMatrix(x, 0.001, z));
+              placeMatrix(x, yc + 0.001, z));
             break;
           case 'water':
             waterCells.push({ c, r });
@@ -211,19 +223,41 @@ export function buildMap(mapDef) {
             }
             break;
           }
-          case 'cliff':
+          case 'cliff': {
             if (hasOpenNeighbor8(c, r)) {
-              batcher.addProcedural('proc', procMaterial, makeCliffGeometry(TILE, WALL_H),
-                placeMatrix(x, 0, z));
+              // find the range of floor levels this cliff borders
+              let lo = Infinity;
+              let hi = -Infinity;
+              for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                if (!isOpen(c + dc, r + dr)) continue;
+                const lv = hf.level(c + dc, r + dr);
+                lo = Math.min(lo, lv);
+                hi = Math.max(hi, lv);
+              }
+              if (lo === Infinity) { lo = hi = hf.level(c, r); }
+              let baseY, topY;
+              if (hi > lo) {
+                // retaining cliff: a face from the low ground up to the high
+                // plateau surface (small lip above)
+                baseY = lo * STEP;
+                topY = hi * STEP + 0.15;
+              } else {
+                // scenery wall sitting on its own level
+                baseY = lo * STEP;
+                topY = baseY + WALL_H;
+              }
+              batcher.addProcedural('proc', procMaterial, makeCliffGeometry(TILE, topY - baseY),
+                placeMatrix(x, baseY, z));
             }
             break;
+          }
           case 'tree':
             batcher.addProcedural('proc', procMaterial, makeTreeGeometry(c * 31 + r),
-              placeMatrix(x, 0, z, 0, 1.15, 1.15, 1.15));
+              placeMatrix(x, yc, z, 0, 1.15, 1.15, 1.15));
             break;
           case 'rock':
             batcher.addProcedural('proc', procMaterial, makeRockGeometry(c * 17 + r * 3),
-              placeMatrix(x, 0, z));
+              placeMatrix(x, yc, z));
             break;
         }
       }
@@ -234,7 +268,7 @@ export function buildMap(mapDef) {
           || def.prop.startsWith('bed'))
           ? 0
           : Math.floor(h * 4) * (Math.PI / 2);
-        batcher.addModel(def.prop, placeMatrix(x, 0, z, rot));
+        batcher.addModel(def.prop, placeMatrix(x, yc, z, rot));
         if (def.propSolid) collision.setSolid(c, r, true);
       }
 
@@ -255,14 +289,33 @@ export function buildMap(mapDef) {
     return false;
   }
 
+  // --- decorative detail scatter: flowers, pebbles, mushrooms on open grass
+  // for visual richness (non-solid, non-interactive) ---
+  const detailGeos = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const def = LEGEND[grid[r][c]];
+      if (!def || def.solid || def.prop || def.cuttable || def.floor !== 'grass') continue;
+      const dh = cellHash(c * 7 + 1, r * 13 + 5);
+      if (dh > 0.34) continue; // ~1/3 of open grass cells get a detail
+      const geo = makeDetailGeometry(c * 31 + r * 17, dh);
+      geo.applyMatrix4(placeMatrix((c + 0.5) * TILE, hf.level(c, r) * STEP, (r + 0.5) * TILE,
+        dh * Math.PI * 2));
+      detailGeos.push(geo);
+    }
+  }
+  if (detailGeos.length) {
+    batcher.addProcedural('proc', procMaterial, mergeGeometries(detailGeos, false));
+  }
+
   const group = batcher.build();
 
-  // --- water: one merged translucent plane, animated by World ---
+  // --- water: merged translucent planes at each cell's elevation ---
   let waterMesh = null;
   if (waterCells.length) {
     const geos = waterCells.map(({ c, r }) =>
       new THREE.PlaneGeometry(TILE, TILE).rotateX(-Math.PI / 2)
-        .translate((c + 0.5) * TILE, -0.22, (r + 0.5) * TILE).toNonIndexed());
+        .translate((c + 0.5) * TILE, hf.level(c, r) * STEP - 0.22, (r + 0.5) * TILE).toNonIndexed());
     waterMesh = new THREE.Mesh(
       mergeGeometries(geos, false),
       new THREE.MeshStandardMaterial({
@@ -273,10 +326,23 @@ export function buildMap(mapDef) {
     group.add(waterMesh);
   }
 
+  // --- waterfalls: animated vertical sheets down a cliff face ---
+  const waterfalls = [];
+  for (const wf of mapDef.waterfalls || []) {
+    const topY = hf.level(wf.x, wf.y) * STEP;
+    const botY = (wf.to ?? 0) * STEP;
+    const mesh = makeWaterfallGeometry(TILE, topY, botY, wf.dir);
+    mesh.position.set((wf.x + 0.5) * TILE, 0, (wf.y + 0.5) * TILE);
+    group.add(mesh);
+    waterfalls.push(mesh);
+  }
+
+  const yAt = (c, r) => hf.level(c, r) * STEP;
+
   // --- cuttable fields ---
   const cuttables = [];
   if (cuttableCells.grass) {
-    const field = new CuttableField(makeGrassTuftGeometry(), procMaterial, cuttableCells.grass, 'grass');
+    const field = new CuttableField(makeGrassTuftGeometry(), procMaterial, cuttableCells.grass, 'grass', yAt);
     cuttables.push(field);
     group.add(field.mesh);
   }
@@ -284,12 +350,12 @@ export function buildMap(mapDef) {
     const src = modelGeometries('barrel_small')[0];
     const geo = src.geometry.clone();
     geo.scale(0.8, 0.8, 0.8);
-    const field = new CuttableField(geo, src.material, cuttableCells.pot, 'pot');
+    const field = new CuttableField(geo, src.material, cuttableCells.pot, 'pot', yAt);
     cuttables.push(field);
     group.add(field.mesh);
   }
 
-  return { group, collision, waterMesh, cuttables, cols, rows };
+  return { group, collision, heightfield: hf, waterMesh, waterfalls, cuttables, cols, rows };
 }
 
 const capMaterial = new THREE.MeshStandardMaterial({ color: 0x3d3a45, roughness: 1, metalness: 0 });

@@ -65,17 +65,20 @@ export class CameraRig {
       desired = this._clampTarget(focus.x, focus.z, this.bounds);
     }
 
+    const desiredY = focus.y || 0;
     if (this.transition) {
       this.transition.t += dt / CAMERA.transitionTime;
       const k = Math.min(this.transition.t, 1);
       const ease = k * k * (3 - 2 * k);
       this.target.x += (desired.x - this.target.x) * ease;
       this.target.z += (desired.z - this.target.z) * ease;
+      this.target.y += (desiredY - this.target.y) * ease;
       if (k >= 1) this.transition = null;
     } else {
       const lerp = 1 - Math.exp(-(this.mode === 'room' ? CAMERA.roomLerp : CAMERA.followLerp) * dt);
       this.target.x += (desired.x - this.target.x) * lerp;
       this.target.z += (desired.z - this.target.z) * lerp;
+      this.target.y += (desiredY - this.target.y) * lerp;
     }
 
     this._applyOffset();
@@ -90,7 +93,7 @@ export class CameraRig {
   snapTo(focus) {
     const rect = this.mode === 'room' ? this.room : this.bounds;
     const t = this._clampTarget(focus.x, focus.z, rect);
-    this.target.set(t.x, 0, t.z);
+    this.target.set(t.x, focus.y || 0, t.z);
     this.transition = null;
     this._applyOffset();
   }

@@ -76,10 +76,37 @@ set(g, 38, 13, 'd');
 fillRect(g, 3, 10, 5, 6, 'C');
 fillRect(g, 4, 12, 4, 1, 'd'); // carved passage, crack blocks at x=7
 
+// --- northern highland: the wooded rise the Bramble Crypt sits on ------------
+// Rows 1-8 climb to elevation level 1; a cliff south-face at row 9 walls it
+// off, with a ramp gap where the crypt path (col 23) crosses. The highland's
+// eastern edge drops to the lake as a cliff with a waterfall.
+const hg = makeGrid(W, H, '0'); // parallel heights grid
+fillRect(hg, 1, 1, W - 2, 8, '1'); // rows 1-8 → level 1
+// south face cliff along row 9 (skip the lake cols 31-39 and the ramp col 23)
+for (let x = 3; x <= 42; x++) {
+  if (x === 23) continue;            // ramp gap
+  if (x >= 31 && x <= 39) continue;  // lake
+  set(g, x, 9, 'C');
+}
+// eastern cliff face down to the lake (row 8, over the lake columns), with a
+// gap at col 35 for the waterfall
+for (let x = 31; x <= 39; x++) {
+  if (x === 35) continue;
+  set(g, x, 8, 'C');
+}
+set(g, 23, 9, 'd'); // ramp cell stays a walkable path
+
 export default {
   id: 'overworld',
   music: 'overworld',
   grid: toStrings(g),
+  heights: toStrings(hg),
+  ramps: [
+    { x: 23, y: 9, dir: 'n' }, // climb north from the village up to the crypt
+  ],
+  waterfalls: [
+    { x: 35, y: 8, dir: 's', to: 0 }, // highland edge → into the lake
+  ],
   doors: [
     { id: 'ow_gate_d2', x: 38, y: 14, dir: 's', type: 'shut', openWhen: 'flag:d2_gate_open' },
   ],
@@ -106,7 +133,7 @@ export default {
     { type: 'sign', id: 'sign_sanctum', x: 8, y: 14, dir: 's', dialogId: 'sign_sanctum' },
     // wandering dead
     { type: 'skeleton', x: 23, y: 12 },
-    { type: 'skeleton', x: 17, y: 9 },
+    { type: 'skeleton', x: 17, y: 4 },  // up on the highland near the crypt
     { type: 'skeleton', x: 30, y: 20 },
     { type: 'skeleton_archer', x: 36, y: 22 },
     { type: 'skeleton', x: 10, y: 18 },

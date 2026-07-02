@@ -16,6 +16,12 @@ async function boot() {
   game.audio = new AudioSystem(game);
   window.__game = game; // dev/testing hook
 
+  // always-visible speaker toggle (also serves as an audio-unlock gesture)
+  const soundBtn = document.getElementById('btn-sound');
+  const syncSound = () => { soundBtn.textContent = game.audio.muted ? '🔇' : '🔊'; };
+  soundBtn.addEventListener('click', () => { game.toggleMute(); syncSound(); });
+  syncSound();
+
   game.start(); // shows the title screen
 
   // dev shortcut: ?map=dungeon1 skips the title/intro

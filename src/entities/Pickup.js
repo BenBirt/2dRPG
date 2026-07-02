@@ -91,8 +91,8 @@ export class Pickup extends Entity {
       this.removed = true;
       return;
     }
-    // bob + spin, blink near despawn
-    this.mesh.position.y = Math.sin(this.age * 3) * 0.08;
+    // bob + spin (around the ground height set at spawn), blink near despawn
+    this.mesh.position.y = (this.groundY || 0) + Math.sin(this.age * 3) * 0.08;
     this.mesh.rotation.y += dt * 2.2;
     if (this.ttl - this.age < 3) {
       this.mesh.visible = Math.floor(this.age * 10) % 2 === 0;
