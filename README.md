@@ -1,5 +1,7 @@
 # The Hollow Isle
 
+### ▶ [Play it here](https://benbirt.github.io/2dRPG/)
+
 A Zelda-like top-down action RPG in the spirit of *Link's Awakening* — low-poly 3D,
 tilted top-down camera, built with [three.js](https://threejs.org/). Runs entirely in
 the browser (desktop and phone), served as a static site from GitHub Pages.
