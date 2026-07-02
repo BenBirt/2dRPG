@@ -1,5 +1,8 @@
+import * as THREE from 'three';
 import { buildMap } from './MapLoader.js';
 import { TILE, DROPS } from '../data/balance.js';
+
+const TORCH_LIGHTS = 7; // fixed pool → constant shader light count
 import { createInteractable, Door } from '../entities/Interactables.js';
 import { createEnemy } from '../entities/enemies/Skeletons.js';
 import { createBoss } from '../entities/bosses/Bosses.js';
@@ -31,9 +34,53 @@ export class World {
     this.cuttables = built.cuttables;
     this.waterMesh = built.waterMesh;
     this.waterfalls = built.waterfalls || [];
+    this.torches = built.torches || [];
     this.cols = built.cols;
     this.rows = built.rows;
     this.game.scene.add(this.group);
+    this._initTorchLights();
+  }
+
+  // A fixed pool of point lights that snap to the nearest torches to the player
+  // each frame and flicker — dungeon atmosphere at a constant shader cost.
+  _initTorchLights() {
+    if (!this._torchPool) {
+      this._torchPool = [];
+      for (let i = 0; i < TORCH_LIGHTS; i++) {
+        // always present & visible with a constant count (intensity 0 when
+        // unused) so the light count never changes and shaders never recompile
+        const l = new THREE.PointLight(0xffa542, 0, 8, 2);
+        this.game.scene.add(l);
+        this._torchPool.push(l);
+      }
+    }
+    for (const l of this._torchPool) l.intensity = 0;
+  }
+
+  _updateTorchLights() {
+    const pool = this._torchPool;
+    if (!pool) return;
+    if (!this.torches.length || !this.game.player) {
+      for (const l of pool) l.intensity = 0;
+      return;
+    }
+    const p = this.game.player.pos;
+    const near = this.torches
+      .map((t) => ({ t, d: (t.x - p.x) ** 2 + (t.z - p.z) ** 2 }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, TORCH_LIGHTS);
+    for (let i = 0; i < pool.length; i++) {
+      const l = pool[i];
+      if (i < near.length && near[i].d < 420) {
+        const { t } = near[i];
+        l.position.set(t.x, t.y, t.z);
+        const flicker = 1 + Math.sin(this.time * 11 + t.x * 3.1) * 0.14
+          + Math.sin(this.time * 23 + t.z * 1.7) * 0.08;
+        l.intensity = 9 * flicker;
+      } else {
+        l.intensity = 0;
+      }
+    }
   }
 
   // Ground elevation at a world position (0 for flat maps).
@@ -145,6 +192,7 @@ export class World {
       if (wf.material.map) wf.material.map.offset.y = (this.time * 0.9) % 1;
       wf.material.emissiveIntensity = 0.28 + Math.sin(this.time * 6) * 0.06;
     }
+    this._updateTorchLights();
 
     for (const e of this.entities) {
       if (e.removed) continue;
