@@ -8,7 +8,7 @@ import { Heightfield } from './Heightfield.js';
 import {
   makeTreeGeometry, makeRockGeometry, makeGrassTuftGeometry,
   makeCliffGeometry, makeGroundCellGeometry, makeRampGeometry, makeDetailGeometry,
-  makeWaterfallGeometry, GROUND_COLORS,
+  makeWaterfallGeometry, makeBackdrop, GROUND_COLORS,
 } from './Procedural.js';
 
 const WALL_H = 2.2;
@@ -309,6 +309,11 @@ export function buildMap(mapDef) {
   }
 
   const group = batcher.build();
+
+  // --- distant, unreachable backdrop scenery for open-air maps ---
+  if (!mapDef.rooms?.length && mapDef.backdrop !== false) {
+    group.add(makeBackdrop(cols, rows, TILE));
+  }
 
   // --- water: merged translucent planes at each cell's elevation ---
   let waterMesh = null;

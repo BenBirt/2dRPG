@@ -208,6 +208,80 @@ export function makeDetailGeometry(seed, hsh) {
   return merged(parts);
 }
 
+// Distant, unreachable backdrop scenery for open-air maps: a wide sea, a ring
+// of hazy mountains beyond the coast, and a few far islands. Everything is
+// vertex-coloured and merged into one Group; it sits outside the play area and
+// recedes into the fog for depth. Returns a THREE.Group.
+export function makeBackdrop(cols, rows, tile) {
+  const group = new THREE.Group();
+  const cx = (cols * tile) / 2;
+  const cz = (rows * tile) / 2;
+  const span = Math.max(cols, rows) * tile;
+
+  // deterministic pseudo-random from an index
+  const rnd = (i, s) => ((Math.sin((i + 1) * (s * 78.233 + 12.9898)) * 43758.5453) % 1 + 1) % 1;
+
+  // --- wide sea plane, low, extending to the horizon ---
+  const sea = new THREE.Mesh(
+    new THREE.PlaneGeometry(span * 4, span * 4).rotateX(-Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0x2b6fb0, roughness: 0.25, metalness: 0.1 })
+  );
+  sea.position.set(cx, -0.9, cz);
+  group.add(sea);
+
+  // --- opaque earth base directly under the map footprint so gaps between
+  // floor/wall tiles show ground, not the sea below ---
+  const base = new THREE.Mesh(
+    new THREE.PlaneGeometry(cols * tile, rows * tile).rotateX(-Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0x3f3a30, roughness: 1 })
+  );
+  base.position.set(cx, -0.4, cz);
+  group.add(base);
+
+  // --- ring of hazy mountains beyond the coast (tall, so their peaks rise
+  // above the play area into view under the steep top-down camera) ---
+  const mtnParts = [];
+  const ringR = span * 0.55;
+  const count = 52;
+  for (let i = 0; i < count; i++) {
+    const ang = (i / count) * Math.PI * 2 + rnd(i, 3) * 0.12;
+    const rr = ringR + rnd(i, 7) * span * 0.3;
+    const mx = cx + Math.cos(ang) * rr;
+    const mz = cz + Math.sin(ang) * rr;
+    const h = 16 + rnd(i, 11) * 26;
+    const rad = 7 + rnd(i, 13) * 9;
+    const cone = new THREE.ConeGeometry(rad, h, 5 + (i % 3)).toNonIndexed();
+    // atmospheric blue-grey, lighter with height (snowier peaks)
+    const base = new THREE.Color(0x5a6d84).lerp(new THREE.Color(0x9fb0c6), rnd(i, 17));
+    paint(cone, base.getHex(), 0.03);
+    cone.translate(mx, h / 2 - 1, mz);
+    mtnParts.push(cone);
+  }
+  const mountains = new THREE.Mesh(merged(mtnParts),
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0, fog: true }));
+  group.add(mountains);
+
+  // --- a few flat far islands dotted in the sea ---
+  const islParts = [];
+  for (let i = 0; i < 7; i++) {
+    const ang = rnd(i, 23) * Math.PI * 2;
+    const rr = span * (0.34 + rnd(i, 29) * 0.18);
+    const ix = cx + Math.cos(ang) * rr;
+    const iz = cz + Math.sin(ang) * rr;
+    const s = 3 + rnd(i, 31) * 5;
+    const isle = new THREE.IcosahedronGeometry(s, 0).toNonIndexed();
+    isle.scale(1.4, 0.28, 1.4);
+    paint(isle, 0x4f8a44, 0.04);
+    isle.translate(ix, -0.2, iz);
+    islParts.push(isle);
+  }
+  const islands = new THREE.Mesh(merged(islParts),
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 }));
+  group.add(islands);
+
+  return group;
+}
+
 // Animated waterfall sheet: a vertical translucent plane down a cliff face.
 // Returned as a Mesh (animated by World via userData.scroll).
 const waterfallMat = new THREE.MeshStandardMaterial({
