@@ -102,10 +102,51 @@ export class Enemy extends Entity {
       this.setState('chase', 'Running_A');
     }
 
+    this._separate();
     this.pos.y = this.game.world.terrainHeightAt(this.pos.x, this.pos.z);
     this._touchDamage();
     this.updateBlink();
     this.syncMesh();
+  }
+
+  // Keep the enemy out of the player's personal space (and lightly out of
+  // other enemies) so nothing ever stands inside the hero. The enemy is the
+  // one that moves, so the player stays fully in control.
+  _separate() {
+    const p = this.player;
+    if (p && p.alive) {
+      const dx = this.x - p.x;
+      const dz = this.z - p.z;
+      const d = Math.hypot(dx, dz);
+      const min = this.radius + p.radius;
+      if (d < min) {
+        const push = d > 0.001 ? (min - d) : min;
+        const ux = d > 0.001 ? dx / d : 1;
+        const uz = d > 0.001 ? dz / d : 0;
+        const res = this.game.world.collision.moveCircle(
+          this.pos.x, this.pos.z, this.radius, ux * push, uz * push
+        );
+        this.pos.x = res.x;
+        this.pos.z = res.z;
+      }
+    }
+    // gentle mutual spread from other live enemies (wall-safe)
+    for (const e of this.game.world.entities) {
+      if (e === this || e.friendly !== false || !e.alive || e.removed) continue;
+      const dx = this.x - e.x;
+      const dz = this.z - e.z;
+      const d = Math.hypot(dx, dz);
+      const min = this.radius + e.radius;
+      if (d > 0.001 && d < min) {
+        const push = (min - d) * 0.5;
+        const nx = this.pos.x + (dx / d) * push;
+        const nz = this.pos.z + (dz / d) * push;
+        if (!this.game.world.collision.circleHitsSolid(nx, nz, this.radius)) {
+          this.pos.x = nx;
+          this.pos.z = nz;
+        }
+      }
+    }
   }
 
   _touchDamage() {

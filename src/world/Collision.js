@@ -65,11 +65,41 @@ export class CollisionGrid {
     return false;
   }
 
+  // If (x,z) already overlaps a solid cell, return a position pushed out along
+  // the shallowest axis so an embedded circle can never get stuck. Returns the
+  // input unchanged when it isn't penetrating.
+  resolvePenetration(x, z, radius) {
+    if (!this.circleHitsSolid(x, z, radius)) return { x, z, escaped: false };
+    const t = this.tile;
+    const c = Math.floor(x / t);
+    const r = Math.floor(z / t);
+    // push toward whichever of the four cell edges is nearest and free
+    const candidates = [
+      { x: (c) * t - radius - EPS, z, gap: x - c * t },              // west
+      { x: (c + 1) * t + radius + EPS, z, gap: (c + 1) * t - x },     // east
+      { x, z: (r) * t - radius - EPS, gap: z - r * t },              // north
+      { x, z: (r + 1) * t + radius + EPS, gap: (r + 1) * t - z },     // south
+    ].sort((a, b) => a.gap - b.gap);
+    for (const cand of candidates) {
+      if (!this.circleHitsSolid(cand.x, cand.z, radius)) {
+        return { x: cand.x, z: cand.z, escaped: true };
+      }
+    }
+    return { x, z, escaped: true }; // fully boxed in — nothing we can do
+  }
+
   // Axis-separated move with slide. Returns final position plus which axes hit.
   moveCircle(x, z, radius, dx, dz) {
     const t = this.tile;
     let hitX = false;
     let hitZ = false;
+
+    // escape first if we somehow started inside solid (e.g. a door sealed on us)
+    if (this.circleHitsSolid(x, z, radius)) {
+      const esc = this.resolvePenetration(x, z, radius);
+      x = esc.x;
+      z = esc.z;
+    }
 
     let nx = x + dx;
     if (dx !== 0 && this.circleHitsSolid(nx, z, radius)) {

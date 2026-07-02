@@ -204,10 +204,11 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
       this.sun.color.set(0xffd9a0); this.sun.intensity = 1.5;
       this.fill.intensity = 0.28;
     } else {
-      // open-air isle: bright sky, long fog, strong warm sun
+      // open-air isle: bright sky, long fog (so the distant mountains read as
+      // hazy backdrop rather than vanishing), strong warm sun
       this.scene.background.set(0x8ec6e8);
       this.scene.fog.color.set(0x9ecbe8);
-      this.scene.fog.near = 42; this.scene.fog.far = 92;
+      this.scene.fog.near = 55; this.scene.fog.far = 175;
       this.hemi.color.set(0xcfe6ff); this.hemi.groundColor.set(0x5a6b3a);
       this.hemi.intensity = 1.05;
       this.sun.color.set(0xfff0d0); this.sun.intensity = 2.1;

@@ -65,10 +65,22 @@ export class AudioSystem {
     for (const ev of ['pointerdown', 'touchend', 'touchstart', 'keydown', 'click']) {
       window.addEventListener(ev, this._boundResume, { passive: true });
     }
-    // Browsers suspend the context when the tab is backgrounded.
+    // Halt all audio while the page is backgrounded (another app is in front)
+    // and restore it on return. Without this the media session opened for iOS
+    // keeps the mix playing after you leave the browser.
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && this._ctx?.state === 'suspended') this._ctx.resume();
+      if (!this._ctx) return;
+      if (document.hidden) {
+        if (this._ctx.state === 'running') this._ctx.suspend();
+      } else if (this._ctx.state === 'suspended' && !this.muted) {
+        this._ctx.resume();
+      }
     });
+  }
+
+  _isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
 
   _detachResume() {
@@ -82,12 +94,14 @@ export class AudioSystem {
   // HTMLAudioElement during the unlock gesture opens the media channel so
   // music/SFX are audible regardless of the ringer switch.
   _unmuteIOS() {
-    if (this._iosUnmuted) return;
+    // Only iOS needs this; on Android the media session it opens keeps audio
+    // playing after the browser is backgrounded, which we don't want.
+    if (this._iosUnmuted || !this._isIOS()) return;
     this._iosUnmuted = true;
     try {
       const el = document.createElement('audio');
       el.setAttribute('playsinline', '');
-      // 0.05s of silence, base64 WAV
+      // 0.05s of silence, base64 WAV — plays once, not looped
       el.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
       el.volume = 0.001;
       const p = el.play();

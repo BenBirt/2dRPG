@@ -67,6 +67,13 @@ export class RoomManager {
         door.setOpen(hostiles.length === 0, { sfx: hostiles.length > 0 });
       }
     }
+    // a door may have just sealed while the player's circle still overlapped
+    // its cell — shove them fully inside the room so they aren't trapped
+    if (hostiles.length > 0) {
+      const p = this.game.player;
+      const esc = this.game.world.collision.resolvePenetration(p.pos.x, p.pos.z, p.radius);
+      if (esc.escaped) { p.pos.x = esc.x; p.pos.z = esc.z; p.syncMesh(); }
+    }
     const boss = hostiles.find((e) => e.isBoss);
     if (boss) {
       this.game.events.emit('boss-bar', { show: true, hp: boss.hp, maxHp: boss.maxHp });
