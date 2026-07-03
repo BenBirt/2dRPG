@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { buildMap } from './MapLoader.js';
 import { TILE, DROPS } from '../data/balance.js';
 
-const TORCH_LIGHTS = 7; // fixed pool → constant shader light count
+// fixed pool → constant shader light count; smaller on phones where per-
+// fragment light cost bites hardest
+const TORCH_LIGHTS = window.matchMedia?.('(pointer: coarse)').matches ? 4 : 7;
 import { createInteractable, Door } from '../entities/Interactables.js';
 import { createEnemy } from '../entities/enemies/Skeletons.js';
 import { createBoss } from '../entities/bosses/Bosses.js';

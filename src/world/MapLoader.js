@@ -265,14 +265,38 @@ export function buildMap(mapDef) {
 
       // --- props ---
       if (def.prop && !def.cuttable) {
-        const rot = def.propSolid && (def.prop.startsWith('table') || def.prop.startsWith('shelf')
-          || def.prop.startsWith('bed'))
-          ? 0
-          : Math.floor(h * 4) * (Math.PI / 2);
-        batcher.addModel(def.prop, placeMatrix(x, yc, z, rot));
-        if (def.propSolid) collision.setSolid(c, r, true);
-        if (def.prop.startsWith('torch') || def.prop.startsWith('candle')) {
-          torches.push({ x, y: yc + 1.4, z }); // flame height
+        if (def.prop === 'torch_lit') {
+          // torches hang on an adjacent wall as sconces; only a torch with no
+          // wall beside it stands on the floor as a brazier
+          const wall = [
+            { dc: 0, dr: -1, rot: 0 },              // wall to the north, faces south
+            { dc: 0, dr: 1, rot: Math.PI },          // wall to the south, faces north
+            { dc: -1, dr: 0, rot: -Math.PI / 2 },    // wall to the west, faces east
+            { dc: 1, dr: 0, rot: Math.PI / 2 },      // wall to the east, faces west
+          ].find((w) => {
+            const d = defAt(c + w.dc, r + w.dr);
+            return d === null || d.solid;
+          });
+          if (wall) {
+            const inset = TILE / 2 - 0.12;
+            const tx = x + wall.dc * inset;
+            const tz = z + wall.dr * inset;
+            batcher.addModel('torch_mounted', placeMatrix(tx, yc + 1.1, tz, wall.rot));
+            torches.push({ x: tx - wall.dc * 0.3, y: yc + 1.55, z: tz - wall.dr * 0.3 });
+          } else {
+            batcher.addModel('torch_lit', placeMatrix(x, yc, z));
+            torches.push({ x, y: yc + 1.4, z });
+          }
+        } else {
+          const rot = def.propSolid && (def.prop.startsWith('table') || def.prop.startsWith('shelf')
+            || def.prop.startsWith('bed'))
+            ? 0
+            : Math.floor(h * 4) * (Math.PI / 2);
+          batcher.addModel(def.prop, placeMatrix(x, yc, z, rot));
+          if (def.propSolid) collision.setSolid(c, r, true);
+          if (def.prop.startsWith('candle')) {
+            torches.push({ x, y: yc + 1.0, z });
+          }
         }
       }
 

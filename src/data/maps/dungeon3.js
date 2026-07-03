@@ -117,6 +117,8 @@ export default {
     // ── Spawn / warp ──────────────────────────────────────────────────────────
     { type: 'player_spawn', id: 'entrance', x: 5, y: 28, dir: Math.PI },
     { type: 'warp', x: 5, y: 30, to: { map: 'overworld', spawn: 'd3_exit' } },
+    // post-boss return portal in the arena
+    { type: 'warp', x: 2, y: 3, to: { map: 'overworld', spawn: 'd3_exit' }, requires: 'dungeon3_boss_dead' },
 
     // ── r_colonnade — entry fight (sealed until clear) ────────────────────────
     { type: 'skeleton_mage',   x: 8,  y: 28, room: 'r_colonnade' },

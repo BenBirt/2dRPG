@@ -44,11 +44,17 @@ export default {
     { id: 'd1_door_seal', x: 8, y: 19, dir: 'e', type: 'shut', openWhen: 'room_clear' },
     { id: 'd1_door_lock', x: 8, y: 11, dir: 'e', type: 'locked' },
     { id: 'd1_door_boss', x: 5, y: 7, dir: 'n', type: 'boss' },
+    // the bow vault is sealed until the pressure plate in the key room is stepped on
+    { id: 'd1_door_bow', x: 11, y: 7, dir: 'n', type: 'shut', openWhen: 'flag:d1_plate' },
   ],
   entities: [
     { type: 'player_spawn', id: 'entrance', x: 4, y: 20, dir: Math.PI },
     { type: 'warp', x: 4, y: 21, to: { map: 'overworld', spawn: 'd1_exit' } },
+    // post-boss return portal: appears in the boss room once the Captain falls
+    { type: 'warp', x: 2, y: 5, to: { map: 'overworld', spawn: 'd1_exit' }, requires: 'dungeon1_boss_dead' },
     { type: 'lectern', id: 'd1_note_lect', x: 2, y: 17, dir: 'e', dialogId: 'd1_note' },
+    // pressure plate that unseals the bow vault door
+    { type: 'floor_switch', id: 'd1_plate_sw', x: 10, y: 13, sets: 'd1_plate' },
 
     // B — first fight (sealed until clear)
     { type: 'skeleton', x: 12, y: 18, room: 'r_fight' },
