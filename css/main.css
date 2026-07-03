@@ -148,6 +148,24 @@ html, body {
 
 #objective b { color: #ffd86b; font-weight: 600; }
 
+#toast {
+  position: absolute;
+  top: calc(52px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(80vw, 420px);
+  text-align: center;
+  background: rgba(30, 22, 8, 0.75);
+  border: 1px solid rgba(255, 216, 107, 0.45);
+  border-radius: 8px;
+  padding: 5px 14px;
+  font-size: 14px;
+  font-style: italic;
+  color: #ffe9b0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  transition: opacity 0.4s ease;
+}
+
 #btn-sound {
   position: absolute;
   top: calc(8px + var(--safe-top));

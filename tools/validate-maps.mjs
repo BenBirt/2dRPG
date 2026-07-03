@@ -24,12 +24,13 @@ const SELF_TEST = process.argv.includes('--self-test');
 const WALKABLE_TYPES = new Set([
   'player_spawn', 'npc', 'skeleton', 'skeleton_archer', 'skeleton_mage',
   'boss1', 'boss2', 'boss3', 'pickup', 'chest', 'warp', 'sign', 'lectern',
+  'floor_switch',
 ]);
 
 // Entity types whose id field is REQUIRED
 const ID_REQUIRED_TYPES = new Set([
   'player_spawn', 'chest', 'npc', 'switch', 'eye_switch', 'cracked_wall',
-  'sign', 'lectern',
+  'floor_switch', 'sign', 'lectern',
 ]);
 
 // Enemy types

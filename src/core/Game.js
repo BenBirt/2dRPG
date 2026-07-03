@@ -80,6 +80,9 @@ export class Game {
     this.input.addSource(new Keyboard(this.input));
     this.touch = new Touch(this.input);
     this.input.addSource(this.touch);
+    // phones sit closer to the action than desktops: zoom out so oncoming
+    // enemies are visible before they're already in sword range
+    if (this.touch.enabled) this.cameraRig.offset.multiplyScalar(1.35);
 
     this.world = new World(this);
     this.rooms = new RoomManager(this);

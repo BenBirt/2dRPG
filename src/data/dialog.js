@@ -109,7 +109,7 @@ export const DIALOG = {
   // ----- item gets -----
   get_bow: [
     `You found the Warden's Bow!\nLoose arrows with the item button (K on a keyboard, A on touch).`,
-    `The wardens sealed their vaults with watching eyes that open only for a true shot. There is one such eye beside the sealed gate east of Brookhollow — put an arrow through it.`,
+    `The wardens sealed their vaults with watching eyes that open only for a true shot. One such eye waits beside the gate east of Brookhollow — but first, the crypt's guardian still stands between you and the shard.`,
   ],
   get_bombs: [`You found Blasting Powder!\nPlace bombs with the item button. Cracked, ancient walls will not survive it.`],
   get_boss_key: [`You found the Boss Key!\nSomewhere in this place, a sealed door is waiting for it.`],

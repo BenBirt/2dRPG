@@ -88,6 +88,8 @@ export default {
     // ── Spawn / warp ──────────────────────────────────────────────────────────
     { type: 'player_spawn', id: 'entrance', x: 4, y: 27, dir: Math.PI },
     { type: 'warp', x: 4, y: 29, to: { map: 'overworld', spawn: 'd2_exit' } },
+    // post-boss return portal in the boss room
+    { type: 'warp', x: 13, y: 3, to: { map: 'overworld', spawn: 'd2_exit' }, requires: 'dungeon2_boss_dead' },
 
     // ── A — entry room ────────────────────────────────────────────────────────
     { type: 'lectern', id: 'd2_lect_entry', x: 2,  y: 23, dir: 's', dialogId: 'd2_entry' },

@@ -22,6 +22,7 @@ export class HUD {
     game.events.on('flag-set',         ()          => this._renderObjective());
     game.events.on('boss-bar',         (payload)   => this._onBossBar(payload));
     game.events.on('interact-prompt',  (payload)   => this._onPrompt(payload));
+    game.events.on('toast',            (text)      => this._onToast(text));
 
     // Initial render
     this._renderAll();
@@ -43,6 +44,12 @@ export class HUD {
     if (has('d2_gate_open') && !has('dungeon2_boss_dead')) {
       return 'Enter the <b>Drowned Cellars</b> through the east gate.';
     }
+    // inside the crypt: finish it before being pointed back outside
+    if (map === 'dungeon1' && !has('dungeon1_boss_dead')) {
+      return p.hasBow
+        ? 'Claim the first shard: defeat the <b>guardian</b> beyond the sealed boss door.'
+        : 'Explore the crypt — the <b>Warden’s Bow</b> and the first shard lie within.';
+    }
     if (p.hasBow && !has('d2_gate_open')) {
       return map === 'overworld'
         ? 'Loose an <b>arrow</b> at the glowing <b>warden-eye</b> beside the east gate to open it.'
@@ -54,6 +61,15 @@ export class HUD {
         : '';
     }
     return '';
+  }
+
+  _onToast(text) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = text;
+    el.classList.remove('hidden');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => el.classList.add('hidden'), 3500);
   }
 
   _renderObjective() {

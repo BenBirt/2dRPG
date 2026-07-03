@@ -183,6 +183,53 @@ export class EyeSwitch extends Entity {
   }
 }
 
+// ---------------------------------------------------------------- Floor switch
+// A pressure plate set into the floor: stepping on it depresses it with a
+// clunk and sets its flag (opening whichever door listens for it).
+export class FloorSwitch extends Entity {
+  constructor(game, def) {
+    const { x, z } = cellCenter(def.x, def.y);
+    super(game, x, z);
+    this.def = def;
+    this.radius = 0.55;
+    this.noShadow = true;
+    this.triggered = game.progress.flags.has(def.sets);
+
+    this.mesh = new THREE.Group();
+    const rim = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 0.1, 1.5),
+      new THREE.MeshStandardMaterial({ color: 0x55504a, roughness: 0.85 })
+    );
+    rim.position.y = 0.05;
+    this.plate = new THREE.Mesh(
+      new THREE.BoxGeometry(1.1, 0.14, 1.1),
+      new THREE.MeshStandardMaterial({
+        color: 0xb99a4e, metalness: 0.35, roughness: 0.45,
+        emissive: 0x604a18, emissiveIntensity: this.triggered ? 0 : 0.5,
+      })
+    );
+    this.plate.position.y = this.triggered ? 0.05 : 0.13;
+    this.mesh.add(rim, this.plate);
+    this.syncMesh();
+  }
+
+  update(dt) {
+    super.update(dt);
+    if (this.triggered) return;
+    // gentle pulse so it reads as interactive
+    this.plate.material.emissiveIntensity = 0.4 + Math.sin(this.game.world.time * 3.2) * 0.25;
+    const p = this.game.player;
+    if (p?.alive && Math.hypot(p.x - this.x, p.z - this.z) < this.radius + p.radius * 0.4) {
+      this.triggered = true;
+      this.plate.position.y = 0.05;
+      this.plate.material.emissiveIntensity = 0;
+      this.game.cameraRig.addShake(0.12);
+      this.game.events.emit('sfx', 'secret');
+      this.game.setFlag(this.def.sets);
+    }
+  }
+}
+
 // ---------------------------------------------------------------- Cracked wall
 // Sits on a WALKABLE grid cell, blocking it until a bomb blast clears it.
 export class CrackedWall extends Entity {
@@ -230,9 +277,45 @@ export class Warp extends Entity {
     this.def = def;
     this.radius = def.radius ?? 0.8;
     this.cooldown = 1; // grace period so we don't instantly re-trigger
+    this.noShadow = true;
+
+    // exits are visible: a glowing floor ring + soft light shaft. A warp with
+    // def.requires stays dormant (invisible, inert) until that flag is set —
+    // used for the post-boss return portal.
+    this.mesh = new THREE.Group();
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x9fd8ff, transparent: true, opacity: 0.85, depthWrite: false,
+    });
+    this.ring = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.09, 8, 24), ringMat);
+    this.ring.rotation.x = -Math.PI / 2;
+    this.ring.position.y = 0.06;
+    const shaftMat = new THREE.MeshBasicMaterial({
+      color: 0xbfe6ff, transparent: true, opacity: 0.16, depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    this.shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.75, 3.2, 12, 1, true), shaftMat);
+    this.shaft.position.y = 1.6;
+    this.mesh.add(this.ring, this.shaft);
+    this.syncMesh();
+    this._syncActive();
+  }
+
+  get active() {
+    return !this.def.requires || this.game.progress.flags.has(this.def.requires);
+  }
+
+  _syncActive() {
+    this.mesh.visible = this.active;
   }
 
   update(dt) {
+    this._syncActive();
+    if (!this.active) return;
+    const t = this.game.world.time;
+    this.ring.material.opacity = 0.6 + Math.sin(t * 3) * 0.25;
+    this.ring.rotation.z = t * 0.8;
+    this.shaft.material.opacity = 0.12 + Math.sin(t * 2.2) * 0.05;
+
     this.cooldown = Math.max(0, this.cooldown - dt);
     const p = this.game.player;
     if (this.cooldown > 0 || !p?.alive) return;
@@ -305,10 +388,26 @@ export class Door extends Entity {
   setOpen(open, { sfx = true } = {}) {
     if (this.open === open) return;
     this.open = open;
-    this.panel.visible = !open;
+    if (open) {
+      // slide the panel down into the floor rather than blinking away
+      this._slide = 1;
+      this.panel.visible = true;
+    } else {
+      this._slide = 0;
+      this.panel.visible = true;
+      this.panel.position.y = 0.85;
+    }
     if (open) this.game.world.collision.removeBlocker(this.blockerId);
     else this.game.world.collision.addBlocker(this.blockerId, this.def.x, this.def.y);
-    if (sfx) this.game.events.emit('sfx', open ? 'door_open' : 'door_shut');
+    if (sfx) {
+      this.game.events.emit('sfx', open ? 'door_open' : 'door_shut');
+      // opened by something remote (a switch, a flag): tell the player it
+      // happened even though the door is off-screen
+      const p = this.game.player;
+      if (open && p && Math.hypot(p.x - this.x, p.z - this.z) > 9) {
+        this.game.events.emit('toast', 'You hear a door grind open somewhere…');
+      }
+    }
   }
 
   get promptText() {
@@ -349,6 +448,12 @@ export class Door extends Entity {
 
   update(dt) {
     super.update(dt);
+    // animate the panel sliding into the floor after setOpen(true)
+    if (this._slide > 0) {
+      this._slide = Math.max(0, this._slide - dt / 0.7);
+      this.panel.position.y = 0.85 - (1 - this._slide) * 2.1;
+      if (this._slide === 0) this.panel.visible = false;
+    }
     // flag-gated doors listen for their flag
     if (!this.open && this.def.openWhen?.startsWith('flag:')
       && this.game.progress.flags.has(this.def.openWhen.slice(5))) {
@@ -376,6 +481,7 @@ export function createInteractable(game, def) {
     case 'lectern': return new Sign(game, def);
     case 'eye_switch':
     case 'switch': return new EyeSwitch(game, def);
+    case 'floor_switch': return new FloorSwitch(game, def);
     case 'cracked_wall': return new CrackedWall(game, def);
     case 'warp': return new Warp(game, def);
     default: return null;
