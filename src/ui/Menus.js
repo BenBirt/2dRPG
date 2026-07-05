@@ -69,6 +69,9 @@ export class Menus {
   showPause() {
     this._show('<h2>Paused</h2>');
     this._btn('Resume', () => this.game.resume());
+    this._btn(this.game.hintsEnabled ? 'Hints: On' : 'Hints: Off', (e) => {
+      e.target.textContent = this.game.toggleHints() ? 'Hints: On' : 'Hints: Off';
+    });
     this._btn('Export Save', () => Save.exportFile(this.game.progress));
     this._btn('Import Save', async () => {
       try {

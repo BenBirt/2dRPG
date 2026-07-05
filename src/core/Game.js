@@ -80,9 +80,12 @@ export class Game {
     this.input.addSource(new Keyboard(this.input));
     this.touch = new Touch(this.input);
     this.input.addSource(this.touch);
-    // phones sit closer to the action than desktops: zoom out so oncoming
-    // enemies are visible before they're already in sword range
-    if (this.touch.enabled) this.cameraRig.offset.multiplyScalar(1.35);
+    // Camera zoom: user-adjustable multiplier on the base offset, persisted.
+    // Phone default zooms out (less in landscape, which already shows more).
+    this._baseCameraOffset = this.cameraRig.offset.clone();
+    const savedZoom = parseFloat(localStorage.getItem('hollowisle.zoom'));
+    const phoneDefault = window.innerWidth > window.innerHeight ? 1.15 : 1.35;
+    this.setZoom(Number.isFinite(savedZoom) ? savedZoom : (this.touch.enabled ? phoneDefault : 1.0), false);
 
     this.world = new World(this);
     this.rooms = new RoomManager(this);
@@ -222,6 +225,7 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
   enterMap(mapId, spawnId) {
     const mapDef = MAPS[mapId];
     if (!mapDef) throw new Error(`Unknown map: ${mapId}`);
+    this.transientFlags?.clear();
     this.applyEnvironment(mapDef);
     this.world.load(mapDef);
     this.rooms.reset();
@@ -280,6 +284,26 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
     this.events.emit('flag-set', flag);
   }
 
+  // Transient flags: set by timed switches, never persisted, cleared on map
+  // load. Doors and other listeners should test hasFlag(), not progress.flags.
+  setTransientFlag(flag, forSeconds = null) {
+    this.transientFlags ??= new Set();
+    this.transientFlags.add(flag);
+    this.events.emit('flag-set', flag);
+    if (forSeconds !== null) {
+      setTimeout(() => this.clearTransientFlag(flag), forSeconds * 1000);
+    }
+  }
+
+  clearTransientFlag(flag) {
+    if (!this.transientFlags?.delete(flag)) return;
+    this.events.emit('flag-cleared', flag);
+  }
+
+  hasFlag(flag) {
+    return this.progress.flags.has(flag) || !!this.transientFlags?.has(flag);
+  }
+
   autosave() {
     if (this.player) Save.write(this.progress);
   }
@@ -287,6 +311,24 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
   toggleMute() {
     if (!this.audio) return true;
     return this.audio.toggleMute();
+  }
+
+  setZoom(factor, persist = true) {
+    this.zoom = Math.min(1.8, Math.max(0.85, factor));
+    this.cameraRig.offset.copy(this._baseCameraOffset).multiplyScalar(this.zoom);
+    if (persist) localStorage.setItem('hollowisle.zoom', String(this.zoom));
+  }
+
+  // Objective/hint banner visibility, persisted.
+  get hintsEnabled() {
+    return localStorage.getItem('hollowisle.hints') !== '0';
+  }
+
+  toggleHints() {
+    const next = !this.hintsEnabled;
+    localStorage.setItem('hollowisle.hints', next ? '1' : '0');
+    this.events.emit('progress-changed'); // re-render HUD incl. objective
+    return next;
   }
 
   grantChestContents(contents, chest) {

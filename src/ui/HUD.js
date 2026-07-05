@@ -74,7 +74,7 @@ export class HUD {
 
   _renderObjective() {
     if (!this._objective) return;
-    const text = this._objectiveText();
+    const text = this.game.hintsEnabled ? this._objectiveText() : '';
     if (text) {
       this._objective.innerHTML = text;
       this._objective.classList.remove('hidden');

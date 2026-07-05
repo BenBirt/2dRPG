@@ -213,20 +213,141 @@ export class FloorSwitch extends Entity {
     this.syncMesh();
   }
 
-  update(dt) {
-    super.update(dt);
-    if (this.triggered) return;
-    // gentle pulse so it reads as interactive
-    this.plate.material.emissiveIntensity = 0.4 + Math.sin(this.game.world.time * 3.2) * 0.25;
+  // Anything heavy on the plate: the player, or a push block.
+  _pressed() {
     const p = this.game.player;
     if (p?.alive && Math.hypot(p.x - this.x, p.z - this.z) < this.radius + p.radius * 0.4) {
-      this.triggered = true;
-      this.plate.position.y = 0.05;
-      this.plate.material.emissiveIntensity = 0;
-      this.game.cameraRig.addShake(0.12);
-      this.game.events.emit('sfx', 'secret');
-      this.game.setFlag(this.def.sets);
+      return true;
     }
+    for (const e of this.game.world.entities) {
+      if (e.isBlock && !e.removed
+        && Math.hypot(e.x - this.x, e.z - this.z) < this.radius + 0.4) return true;
+    }
+    return false;
+  }
+
+  update(dt) {
+    super.update(dt);
+    const timed = this.def.timed; // seconds the flag stays up, or undefined
+    if (this.triggered && !timed) return;
+
+    if (!this.triggered) {
+      // gentle pulse so it reads as interactive
+      this.plate.material.emissiveIntensity = 0.4 + Math.sin(this.game.world.time * 3.2) * 0.25;
+      if (this._pressed()) {
+        this.triggered = true;
+        this.plate.position.y = 0.05;
+        this.plate.material.emissiveIntensity = 0;
+        this.game.cameraRig.addShake(0.12);
+        this.game.events.emit('sfx', 'secret');
+        if (timed) {
+          this.game.setTransientFlag(this.def.sets, timed);
+          this._resetAt = this.game.world.time + timed;
+        } else {
+          this.game.setFlag(this.def.sets);
+        }
+      }
+    } else if (timed && this.game.world.time >= this._resetAt) {
+      // timed plate pops back up, ready to be pressed again
+      this.triggered = false;
+      this.plate.position.y = 0.13;
+      this.game.events.emit('sfx', 'cycle');
+    }
+  }
+}
+
+// ---------------------------------------------------------------- Push block
+// A heavy stone block the player shoves one cell at a time by walking into it
+// — the classic Zelda puzzle piece. Blocks reset on map reload; the plates
+// they land on latch flags, so solved puzzles stay solved.
+export class PushBlock extends Entity {
+  constructor(game, def) {
+    const { x, z } = cellCenter(def.x, def.y);
+    super(game, x, z);
+    this.def = def;
+    this.isBlock = true;
+    this.radius = 0.85;
+    this.cell = { c: def.x, r: def.y };
+    this.blockerId = `block:${def.id}`;
+    game.world.collision.addBlocker(this.blockerId, def.x, def.y);
+
+    const geo = new THREE.BoxGeometry(1.7, 1.5, 1.7);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x8d8578, roughness: 0.9 });
+    this.mesh = new THREE.Mesh(geo, mat);
+    this.mesh.position.y = 0.75;
+    this.slide = null; // { fx, fz, tx, tz, t }
+    this._pushTime = 0;
+    this.syncMesh();
+  }
+
+  syncMesh() {
+    if (!this.mesh) return;
+    this.mesh.position.set(this.pos.x, this.pos.y + 0.75, this.pos.z);
+  }
+
+  update(dt) {
+    if (this.slide) {
+      this.slide.t = Math.min(1, this.slide.t + dt / 0.4);
+      const k = this.slide.t;
+      const ease = k * k * (3 - 2 * k);
+      this.pos.x = this.slide.fx + (this.slide.tx - this.slide.fx) * ease;
+      this.pos.z = this.slide.fz + (this.slide.tz - this.slide.fz) * ease;
+      if (this.slide.t >= 1) {
+        this.slide = null;
+        this.game.events.emit('sfx', 'door_shut'); // stone thunk
+        this.game.cameraRig.addShake(0.06);
+      }
+      this.pos.y = this.game.world.terrainHeightAt(this.pos.x, this.pos.z);
+      this.syncMesh();
+      return;
+    }
+
+    const p = this.game.player;
+    if (!p?.alive) return;
+    const dx = this.x - p.x;
+    const dz = this.z - p.z;
+    const dist = Math.hypot(dx, dz);
+    // the collision blocker holds the player at exactly TILE/2 + their radius
+    // from the block centre, so the contact threshold needs headroom past that
+    const touching = dist < TILE / 2 + p.radius + 0.2;
+    // pushing = touching AND moving into the block
+    const mv = this.game.input;
+    const moving = Math.hypot(mv.moveX, mv.moveY) > 0.3;
+    const toward = moving && dist > 0.01
+      && (mv.moveX * dx + mv.moveY * dz) / dist > 0.6;
+    if (touching && toward) {
+      this._pushTime += dt;
+      if (this._pushTime > 0.25) {
+        this._pushTime = 0;
+        this._tryPush(Math.abs(dx) > Math.abs(dz)
+          ? { dc: Math.sign(dx), dr: 0 }
+          : { dc: 0, dr: Math.sign(dz) });
+      }
+    } else {
+      this._pushTime = 0;
+    }
+  }
+
+  _tryPush({ dc, dr }) {
+    const col = this.game.world.collision;
+    const nc = this.cell.c + dc;
+    const nr = this.cell.r + dr;
+    // target must be open floor with no other blocker/entity in it
+    if (col.isSolidCell(nc, nr)) {
+      this.game.events.emit('sfx', 'denied');
+      return;
+    }
+    const cx = (nc + 0.5) * TILE;
+    const cz = (nr + 0.5) * TILE;
+    for (const e of this.game.world.entities) {
+      if (e === this || e.removed) continue;
+      if ((e.hittable || e.isBlock || e.interact) && Math.hypot(e.x - cx, e.z - cz) < 0.9) return;
+    }
+    col.removeBlocker(this.blockerId);
+    col.addBlocker(this.blockerId, nc, nr);
+    this.slide = { fx: this.pos.x, fz: this.pos.z, tx: cx, tz: cz, t: 0 };
+    this.cell = { c: nc, r: nr };
+    this.game.events.emit('sfx', 'boss_swing'); // low grinding whoosh
   }
 }
 
@@ -377,10 +498,21 @@ export class Door extends Entity {
     else game.world.collision.addBlocker(this.blockerId, def.x, def.y);
   }
 
+  // openWhen supports 'room_clear', 'flag:x', and 'flags:a+b' (all required).
+  _flagConditionMet() {
+    const { def, game } = this;
+    if (def.openWhen?.startsWith('flag:')) return game.hasFlag(def.openWhen.slice(5));
+    if (def.openWhen?.startsWith('flags:')) {
+      return def.openWhen.slice(6).split('+').every((f) => game.hasFlag(f));
+    }
+    return null; // not flag-driven
+  }
+
   _initiallyOpen() {
     const { def, game } = this;
     if (def.type === 'locked' || def.type === 'boss') return game.progress.flags.has(def.id);
-    if (def.openWhen?.startsWith('flag:')) return game.progress.flags.has(def.openWhen.slice(5));
+    const flagCond = this._flagConditionMet();
+    if (flagCond !== null) return flagCond;
     if (def.openWhen === 'room_clear') return false; // RoomManager opens it
     return def.type === 'oneway';
   }
@@ -389,11 +521,10 @@ export class Door extends Entity {
     if (this.open === open) return;
     this.open = open;
     if (open) {
-      // slide the panel down into the floor rather than blinking away
+      // panel slides down in update(); starting fresh each open
       this._slide = 1;
-      this.panel.visible = true;
     } else {
-      this._slide = 0;
+      this._slide = null;
       this.panel.visible = true;
       this.panel.position.y = 0.85;
     }
@@ -448,16 +579,31 @@ export class Door extends Entity {
 
   update(dt) {
     super.update(dt);
-    // animate the panel sliding into the floor after setOpen(true)
-    if (this._slide > 0) {
-      this._slide = Math.max(0, this._slide - dt / 0.7);
-      this.panel.position.y = 0.85 - (1 - this._slide) * 2.1;
-      if (this._slide === 0) this.panel.visible = false;
+    // animate the panel sliding into the floor after setOpen(true); the state
+    // is self-correcting — an open door's panel ALWAYS converges to hidden and
+    // a closed door's panel to raised, no matter which code path flipped it
+    if (this.open && this.panel.visible) {
+      this._slide = (this._slide ?? 1) - dt / 0.7;
+      if (this._slide <= 0) {
+        this.panel.visible = false;
+        this._slide = null;
+      } else {
+        this.panel.position.y = 0.85 - (1 - this._slide) * 2.1;
+      }
+    } else if (!this.open && !this.panel.visible) {
+      this.panel.visible = true;
+      this.panel.position.y = 0.85;
+      this._slide = null;
+    } else if (!this.open && this.panel.position.y !== 0.85) {
+      this.panel.position.y = 0.85;
+      this._slide = null;
     }
-    // flag-gated doors listen for their flag
-    if (!this.open && this.def.openWhen?.startsWith('flag:')
-      && this.game.progress.flags.has(this.def.openWhen.slice(5))) {
-      this.setOpen(true);
+    // flag-gated doors follow their condition; volatile doors also RE-CLOSE
+    // when the condition lapses (timed plates)
+    const cond = this._flagConditionMet();
+    if (cond !== null) {
+      if (!this.open && cond) this.setOpen(true);
+      else if (this.open && !cond && this.def.volatile) this.setOpen(false);
     }
     // one-way: passable only along def.dir; block when player approaches
     // from the forbidden side
@@ -482,6 +628,7 @@ export function createInteractable(game, def) {
     case 'eye_switch':
     case 'switch': return new EyeSwitch(game, def);
     case 'floor_switch': return new FloorSwitch(game, def);
+    case 'push_block': return new PushBlock(game, def);
     case 'cracked_wall': return new CrackedWall(game, def);
     case 'warp': return new Warp(game, def);
     default: return null;

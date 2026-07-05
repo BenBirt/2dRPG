@@ -24,13 +24,13 @@ const SELF_TEST = process.argv.includes('--self-test');
 const WALKABLE_TYPES = new Set([
   'player_spawn', 'npc', 'skeleton', 'skeleton_archer', 'skeleton_mage',
   'boss1', 'boss2', 'boss3', 'pickup', 'chest', 'warp', 'sign', 'lectern',
-  'floor_switch',
+  'floor_switch', 'push_block',
 ]);
 
 // Entity types whose id field is REQUIRED
 const ID_REQUIRED_TYPES = new Set([
   'player_spawn', 'chest', 'npc', 'switch', 'eye_switch', 'cracked_wall',
-  'floor_switch', 'sign', 'lectern',
+  'floor_switch', 'push_block', 'sign', 'lectern',
 ]);
 
 // Enemy types
@@ -282,19 +282,23 @@ function validateMap(map, allMaps, knownSets, allEntityIds, allDoorIds) {
     if (!openWhen) return;
     if (openWhen === VALID_OPEN_WHEN_ROOM_CLEAR) return;
 
-    if (openWhen.startsWith('flag:')) {
-      const flagName = openWhen.slice(5);
-      // Accept if: appears in any map's entity `sets`, OR matches /_boss_dead$/,
-      // OR equals any entity id (across all maps), OR equals any door id.
-      const ok = knownSets.has(flagName) ||
-                 /_boss_dead$/.test(flagName) ||
-                 allEntityIds.has(flagName) ||
-                 allDoorIds.has(flagName);
-      if (!ok) {
-        err(`door '${door.id ?? di}' openWhen flag '${flagName}' is never set by any entity, is not a known entity/door id, and doesn't match /_boss_dead$/`);
+    const flagNames = openWhen.startsWith('flag:') ? [openWhen.slice(5)]
+      : openWhen.startsWith('flags:') ? openWhen.slice(6).split('+')
+      : null;
+    if (flagNames) {
+      for (const flagName of flagNames) {
+        // Accept if: appears in any map's entity `sets`, OR matches /_boss_dead$/,
+        // OR equals any entity id (across all maps), OR equals any door id.
+        const ok = knownSets.has(flagName) ||
+                   /_boss_dead$/.test(flagName) ||
+                   allEntityIds.has(flagName) ||
+                   allDoorIds.has(flagName);
+        if (!ok) {
+          err(`door '${door.id ?? di}' openWhen flag '${flagName}' is never set by any entity, is not a known entity/door id, and doesn't match /_boss_dead$/`);
+        }
       }
     } else {
-      err(`door '${door.id ?? di}' has unrecognized openWhen value '${openWhen}' (expected 'room_clear' or 'flag:<name>')`);
+      err(`door '${door.id ?? di}' has unrecognized openWhen value '${openWhen}' (expected 'room_clear', 'flag:<name>', or 'flags:<a>+<b>')`);
     }
   });
 

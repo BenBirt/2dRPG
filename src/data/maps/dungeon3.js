@@ -112,6 +112,9 @@ export default {
     // r_colonnade fight seal (divider col 12, row 29; shut until colonnade clear)
     { id: 'd3_door_seal', x: 12, y: 29, dir: 'e', type: 'shut',
       openWhen: 'room_clear' },
+    // r_bosskey → r_bigfight passage: sealed until BOTH plates hold a block
+    { id: 'd3_door_plates', x: 12, y: 14, dir: 'w', type: 'shut',
+      openWhen: 'flags:d3_p1+d3_p2' },
   ],
   entities: [
     // ── Spawn / warp ──────────────────────────────────────────────────────────
@@ -147,6 +150,12 @@ export default {
     { type: 'skeleton_archer', x: 4,  y: 20, room: 'r_eye' },
     { type: 'skeleton_mage',   x: 8,  y: 23, room: 'r_eye' },
     { type: 'pickup', id: 'd3_heart_mid', x: 3, y: 24, kind: 'heart' },
+
+    // ── r_bosskey — twin block puzzle sealing the way to the boss door ───────
+    { type: 'push_block',   id: 'd3_block_a', x: 16, y: 15 },
+    { type: 'push_block',   id: 'd3_block_b', x: 18, y: 15 },
+    { type: 'floor_switch', id: 'd3_plate_a', x: 14, y: 16, sets: 'd3_p1' },
+    { type: 'floor_switch', id: 'd3_plate_b', x: 20, y: 16, sets: 'd3_p2' },
 
     // ── r_key — big fight (2 mages + 2 archers + 1 skeleton) ─────────────────
     { type: 'skeleton_mage',   x: 15, y: 20, room: 'r_key' },
