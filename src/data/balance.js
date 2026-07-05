@@ -10,9 +10,10 @@ export const PLAYER = {
   startHearts: 3, // hp is tracked in half-hearts: 3 hearts = 6 hp
   maxHeartsCap: 6,
   iframes: 1.0,
-  attackDuration: 0.38,
-  attackWindow: [0.08, 0.26], // seconds into the swing when the arc is live
-  attackRange: 1.7,
+  attackDuration: 0.28,
+  attackWindow: [0.05, 0.2], // seconds into the swing when the arc is live
+  attackChainAfter: 0.09, // pressing attack after this point buffers the next swing
+  attackRange: 2.1,
   attackArc: Math.PI / 3, // half-angle of the frontal sector
   attackDamage: 1,
   knockback: 9,

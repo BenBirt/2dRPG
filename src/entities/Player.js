@@ -34,6 +34,11 @@ export class Player extends Entity {
     const model = cloneSkinned(gltf.scene);
     model.scale.setScalar(PLAYER.scale);
     enableShadows(model, { receive: false });
+    // the pack ships the rogue holding crossbows + a throwable — hide those;
+    // the knife stays as the hero's blade
+    model.traverse((n) => {
+      if (/^(1H_Crossbow|2H_Crossbow|Throwable)/.test(n.name)) n.visible = false;
+    });
     this.mesh = new THREE.Group();
     this.mesh.add(model);
     this.anim = new AnimController(model, gltf.animations);
@@ -103,8 +108,22 @@ export class Player extends Entity {
         if (this.stateTime >= w0 && this.stateTime <= w1) {
           this._sweepAttack();
         }
+        // combo: pressing attack late in a swing buffers the next one, so
+        // mashing produces a continuous slash-slash-slash
+        if (input.justPressed('attack') && this.stateTime >= PLAYER.attackChainAfter) {
+          this._attackBuffered = true;
+        }
+        // steer slightly toward held movement so combos can track a target
+        const mx = input.moveX;
+        const mz = input.moveY;
+        if (Math.hypot(mx, mz) > 0.3) this.faceToward(mx, mz, dt, 6);
         if (this.stateTime >= PLAYER.attackDuration) {
-          this._toIdle();
+          if (this._attackBuffered) {
+            this._attackBuffered = false;
+            this._startAttack();
+          } else {
+            this._toIdle();
+          }
         }
         break;
       }
@@ -139,7 +158,8 @@ export class Player extends Entity {
     this.state = 'attack';
     this.stateTime = 0;
     this.attackHitSet = new Set();
-    this.anim.play(Math.random() < 0.5 ? ANIM.attack : ANIM.attackAlt, {
+    this._swingAlt = !this._swingAlt; // alternate slice/chop for combo rhythm
+    this.anim.play(this._swingAlt ? ANIM.attack : ANIM.attackAlt, {
       once: true, duration: PLAYER.attackDuration,
     });
     this.game.events.emit('sfx', 'sword');

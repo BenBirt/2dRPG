@@ -36,9 +36,9 @@ export default {
     //        0         1         2
     //        0123456789012345678901 2
     /* r=0  */ '#######################',
-    /* r=1  */ '#o..*..*..*#*..*..*..*#',
-    /* r=2  */ '#.P.......P#.P.......P#',
-    /* r=3  */ '#.........*#..........#',
+    /* r=1  */ '#o.#*..*..*#*..*..*..*#',
+    /* r=2  */ '#.P#......P#.P.......P#',
+    /* r=3  */ '#...####.###..........#',
     /* r=4  */ '#.....b....#....*..P..#',
     /* r=5  */ '#..........#..........#',
     /* r=6  */ '#.o......o.#..*......*#',
@@ -81,6 +81,12 @@ export default {
     { id: 'd2_door_inner', x: 17, y: 22, dir: 'n', type: 'shut',   openWhen: 'flag:d2_inner_open' },
     // B → E: locked door (consumes small_key)
     { id: 'd2_door_lock',  x: 5,  y: 12, dir: 'n', type: 'locked' },
+    // second door in the same passage: timed dash plates on both sides
+    { id: 'd2_door_dash',  x: 5,  y: 11, dir: 'n', type: 'shut',
+      openWhen: 'flag:d2_dash', volatile: true },
+    // treasure vault inside E: opened by pushing the block onto the plate
+    { id: 'd2_door_vault', x: 8,  y: 3,  dir: 'n', type: 'shut',
+      openWhen: 'flag:d2_vault' },
     // C → F: boss door
     { id: 'd2_door_boss',  x: 17, y: 12, dir: 'n', type: 'boss'   },
   ],
@@ -115,9 +121,16 @@ export default {
     { type: 'chest', id: 'd2_chest_key', x: 20, y: 23, dir: 's',
       contents: { item: 'small_key' } },
 
+    // ── E — block puzzle guarding the vault (bombs + boss key) ────────────────
+    { type: 'push_block',   id: 'd2_block',       x: 8, y: 5 },
+    { type: 'floor_switch', id: 'd2_plate_vault', x: 8, y: 7, sets: 'd2_vault' },
+    // timed dash plates flanking the E passage (6s door)
+    { type: 'floor_switch', id: 'd2_dash_a', x: 5, y: 14, sets: 'd2_dash', timed: 6 },
+    { type: 'floor_switch', id: 'd2_dash_b', x: 5, y: 9,  sets: 'd2_dash', timed: 6 },
+
     // ── E — boss-key fight ────────────────────────────────────────────────────
     { type: 'skeleton',        x: 3,  y: 3,  room: 'r_bosskey' },
-    { type: 'skeleton',        x: 8,  y: 7,  room: 'r_bosskey' },
+    { type: 'skeleton',        x: 6,  y: 8,  room: 'r_bosskey' },
     { type: 'skeleton_archer', x: 2,  y: 9,  room: 'r_bosskey' },
     { type: 'chest', id: 'd2_chest_bosskey', x: 9, y: 2, dir: 's',
       contents: { item: 'boss_key' } },

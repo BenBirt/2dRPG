@@ -22,6 +22,12 @@ async function boot() {
   soundBtn.addEventListener('click', () => { game.toggleMute(); syncSound(); });
   syncSound();
 
+  // touch zoom buttons (bottom-left, opposite the action buttons)
+  document.getElementById('btn-zoom-in')
+    ?.addEventListener('click', () => game.setZoom(game.zoom - 0.15));
+  document.getElementById('btn-zoom-out')
+    ?.addEventListener('click', () => game.setZoom(game.zoom + 0.15));
+
   game.start(); // shows the title screen
 
   // dev shortcut: ?map=dungeon1 skips the title/intro
