@@ -26,10 +26,36 @@ export class World {
     this.activeRoomId = null;
   }
 
+  // Built maps are cached: static geometry, collision grid, and heightfield
+  // are reused when a map is re-entered, making zone changes near-instant
+  // after the first visit. Dynamic state resets: blockers are cleared (doors/
+  // chests/blocks re-register when their entities respawn) and cut grass
+  // regrows — classic Zelda behaviour.
+  static cache = new Map();
+
+  static getBuilt(mapDef) {
+    let built = World.cache.get(mapDef.id);
+    if (!built) {
+      built = buildMap(mapDef);
+      World.cache.set(mapDef.id, built);
+    }
+    return built;
+  }
+
+  // Pre-build a map into the cache without loading it (background warm-up).
+  precache(mapDef) {
+    World.getBuilt(mapDef);
+  }
+
   load(mapDef) {
     this.unload();
     this.mapDef = mapDef;
-    const built = buildMap(mapDef);
+    const cached = World.cache.has(mapDef.id);
+    const built = World.getBuilt(mapDef);
+    if (cached) {
+      built.collision.resetBlockers();
+      for (const f of built.cuttables) f.reset();
+    }
     this.group = built.group;
     this.collision = built.collision;
     this.heightfield = built.heightfield;
@@ -92,10 +118,8 @@ export class World {
 
   unload() {
     if (this.group) {
+      // geometry is owned by the map cache — detach only, don't dispose
       this.game.scene.remove(this.group);
-      this.group.traverse((n) => {
-        if (n.isMesh || n.isInstancedMesh) n.geometry.dispose();
-      });
     }
     for (const e of this.entities) this.removeEntityMesh(e);
     this.entities = [];

@@ -8,7 +8,8 @@ import { Heightfield } from './Heightfield.js';
 import {
   makeTreeGeometry, makeRockGeometry, makeGrassTuftGeometry,
   makeCliffGeometry, makeGroundCellGeometry, makeRampGeometry, makeDetailGeometry,
-  makeWaterfallGeometry, makeBackdrop, GROUND_COLORS,
+  makeWaterfallGeometry, makeBackdrop, makeFenceGeometry, makeWellGeometry,
+  GROUND_COLORS,
 } from './Procedural.js';
 
 const WALL_H = 2.2;
@@ -99,23 +100,31 @@ function placeMatrix(x, y, z, rotY = 0, sx = 1, sy = 1, sz = 1) {
   return m;
 }
 
-// Instanced field of cuttable props (grass tufts, pots). Supports removal.
+// Instanced field of cuttable props (grass tufts, pots). Supports removal
+// and full reset (grass regrows when a cached map is re-entered).
 export class CuttableField {
   constructor(geometry, material, cells, kind, yAt = () => 0) {
     this.kind = kind;
     this.cells = cells; // [{c, r}]
+    this.yAt = yAt;
     this.indexByCell = new Map();
     this.mesh = new THREE.InstancedMesh(geometry, material, Math.max(cells.length, 1));
     this.mesh.count = cells.length;
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
+    this.reset();
+  }
+
+  reset() {
+    this.indexByCell.clear();
     const m = new THREE.Matrix4();
-    cells.forEach(({ c, r }, i) => {
+    this.cells.forEach(({ c, r }, i) => {
       const rot = cellHash(c, r) * Math.PI * 2;
-      m.makeRotationY(rot).setPosition((c + 0.5) * TILE, yAt(c, r), (r + 0.5) * TILE);
+      m.makeRotationY(rot).setPosition((c + 0.5) * TILE, this.yAt(c, r), (r + 0.5) * TILE);
       this.mesh.setMatrixAt(i, m);
       this.indexByCell.set(`${c},${r}`, i);
     });
+    this.mesh.instanceMatrix.needsUpdate = true;
   }
 
   has(c, r) {
@@ -215,12 +224,14 @@ export function buildMap(mapDef) {
             ];
             for (const e of edges) {
               if (!isOpen(c + e.dc, r + e.dr)) continue;
-              batcher.addModel('wall', placeMatrix(x + e.ox, 0, z + e.oz, e.rot, 0.5, WALL_SCALE_Y, 0.6));
+              batcher.addModel('wall', placeMatrix(x + e.ox, yc, z + e.oz, e.rot, 0.5, WALL_SCALE_Y, 0.6));
             }
             if (hasOpenNeighbor8(c, r)) {
+              // sits a hair ABOVE the wall-piece tops (also at WALL_H) so the
+              // two surfaces never z-fight — the flicker seen on wall tops
               batcher.addProcedural('caps', capMaterial,
                 new THREE.PlaneGeometry(TILE, TILE).rotateX(-Math.PI / 2).toNonIndexed()
-                  .applyMatrix4(placeMatrix(x, WALL_H, z)));
+                  .applyMatrix4(placeMatrix(x, yc + WALL_H + 0.04, z)));
             }
             break;
           }
@@ -258,6 +269,21 @@ export function buildMap(mapDef) {
             break;
           case 'rock':
             batcher.addProcedural('proc', procMaterial, makeRockGeometry(c * 17 + r * 3),
+              placeMatrix(x, yc, z));
+            break;
+          case 'fence': {
+            // rails connect toward neighbouring fence cells (or gates/buildings)
+            const fenceAt = (dc, dr) => {
+              const d = defAt(c + dc, r + dr);
+              return d !== null && (d.wallStyle === 'fence' || d.wallStyle === 'dressed');
+            };
+            batcher.addProcedural('proc', procMaterial,
+              makeFenceGeometry(fenceAt(0, -1), fenceAt(1, 0), fenceAt(0, 1), fenceAt(-1, 0)),
+              placeMatrix(x, yc, z));
+            break;
+          }
+          case 'well':
+            batcher.addProcedural('proc', procMaterial, makeWellGeometry(),
               placeMatrix(x, yc, z));
             break;
         }

@@ -36,53 +36,67 @@ path(g, 10, 27, 10, 13, 'd'); // west -> sanctum approach
 path(g, 10, 13, 8, 13, 'd');
 
 // --- Brookhollow village -----------------------------------------------------
-// A proper little hamlet: a cobbled square with a well, four homes, a forge,
-// market stalls and garden plots, ringed loosely so it reads as a place people
-// live. Cleared to grass first, then dressed.
-fillRect(g, 14, 21, 20, 11, 'g'); // clear a generous village footprint
-fillRect(g, 19, 25, 10, 5, 'd');  // cobbled square
-fillRect(g, 23, 21, 2, 11, 'd');  // north-south high street
-fillRect(g, 15, 27, 18, 1, 'd');  // east-west lane
+// Layout principles: the village is ENCLOSED by a picket fence with gates on
+// the north road (to the crypt), south road (to the beach), and the east/west
+// lanes — arriving reads as crossing a threshold. Inside, everything faces a
+// cobbled square focused on the WELL; each building has a distinct function
+// and its door opens onto the square. Saltbeard lives by his dock on the sea.
+fillRect(g, 14, 20, 20, 12, 'g'); // clear the village footprint
 
-// Maren's house (elder, NW — walk-in, wood floor, hearth)
-fillRect(g, 15, 21, 6, 5, '#');
-fillRect(g, 16, 22, 4, 3, '_');
-set(g, 18, 25, 'd');   // doorway
-set(g, 16, 22, 'B');   // bed
-set(g, 19, 22, 's');   // shelf
-set(g, 16, 24, 'h');   // chair
-set(g, 17, 22, 't');   // table
-set(g, 19, 24, 'k');   // keg
+// fence ring first (roads punch their gaps through it below)
+for (let x = 14; x <= 33; x++) { set(g, x, 20, 'f'); set(g, x, 31, 'f'); }
+for (let y = 20; y <= 31; y++) { set(g, 14, y, 'f'); set(g, 33, y, 'f'); }
 
-// Saltbeard's cottage (fisher, SW)
-fillRect(g, 15, 29, 5, 3, '#');
-fillRect(g, 16, 30, 3, 1, '_');
-set(g, 17, 31, 'd');   // doorway
-set(g, 16, 30, 'B');
+// roads: high street (north gate -> square -> south gate) and the cross lane
+path(g, 23, 32, 23, 21, 'd');      // re-carve; punches both fence gates
+set(g, 23, 20, 'd'); set(g, 23, 31, 'd');
+fillRect(g, 15, 27, 18, 1, 'd');   // east-west lane
+set(g, 14, 27, 'd'); set(g, 33, 27, 'd'); // lane gates
 
-// Brena's forge (smith, E — open-sided)
-fillRect(g, 30, 22, 4, 3, '#');
-set(g, 31, 24, 'd');   // opening
-set(g, 30, 23, 'x');   // crates
-set(g, 33, 23, 'b');   // barrel of quench-water
-set(g, 32, 22, 's');   // tool shelf
+// the square, cobbled, with the well as its focus
+fillRect(g, 20, 24, 8, 5, 'd');
+set(g, 23, 26, 'w');               // the village well
 
-// Storehouse (SE)
-fillRect(g, 30, 29, 4, 3, '#');
-set(g, 31, 29, 'd');
-set(g, 32, 30, 'x');
-set(g, 33, 30, 'b');
+// Maren's cottage (elder, NW) — door opens SOUTH onto the square
+fillRect(g, 16, 21, 6, 5, '#');
+fillRect(g, 17, 22, 4, 3, '_');
+set(g, 19, 25, 'd');               // doorway facing the square
+set(g, 17, 22, 'B');               // bed
+set(g, 20, 22, 's');               // shelf
+set(g, 17, 24, 'h');               // fireside chair
+set(g, 18, 22, 't');               // table
 
-// village well at the heart of the square
-set(g, 23, 26, 'p');   // stone well-ring (column stands in for it)
+// Brena's forge (NE) — open south front, working clutter
+fillRect(g, 28, 21, 5, 4, '#');
+set(g, 30, 24, 'd'); set(g, 31, 24, 'd'); // wide open front
+fillRect(g, 29, 22, 3, 2, '_');
+set(g, 29, 22, 'x');               // crates of stock
+set(g, 31, 22, 'k');               // quench barrel
+set(g, 29, 23, 's');               // tool shelf
 
-// market stalls + garden plots + fences
-set(g, 20, 29, 'o'); set(g, 21, 29, 'o');  // fruit barrels
-set(g, 26, 29, 'b'); set(g, 27, 30, 'o');  // trader's stall
-set(g, 25, 22, 'o'); set(g, 26, 22, 'q');  // north stall
-scatter(g, 15, 22, 4, 4, ',', 0.25, 201);  // Maren's herb garden
-scatter(g, 30, 25, 4, 4, ',', 0.2, 202);   // kitchen garden
-scatter(g, 14, 21, 20, 11, ',', 0.06, 131);
+// storehouse (SE) — door opens WEST onto the square
+fillRect(g, 28, 28, 5, 3, '#');
+set(g, 28, 29, 'd');
+fillRect(g, 29, 29, 3, 1, '_');
+set(g, 30, 29, 'x'); set(g, 31, 29, 'b');
+
+// Maren's fenced herb garden (SW plot, opening at its NE corner)
+for (let x = 16; x <= 19; x++) set(g, x, 30, 'f');
+for (let y = 28; y <= 30; y++) set(g, 16, y, 'f');
+set(g, 17, 28, 'f'); set(g, 18, 28, 'f'); // top rail, gap at (19,28)
+scatter(g, 17, 29, 3, 1, ',', 0.9, 201);
+
+// market corner: stall barrels + crates by the square's east edge
+set(g, 26, 24, 'o'); set(g, 27, 24, 'q');
+set(g, 20, 29, 'o'); set(g, 21, 30, 'o');
+set(g, 27, 30, 'b');
+
+// village green touches
+scatter(g, 15, 21, 18, 10, ',', 0.05, 131);
+
+// --- Saltbeard's dock: wooden planks stepping out into the sea ---------------
+fillRect(g, 26, 33, 2, 3, '_');    // pier over the water (rows 33-35)
+set(g, 26, 32, 'd'); set(g, 27, 32, 'd'); // beach approach
 
 // --- Bramble Crypt facade (D1, north) ---------------------------------------
 fillRect(g, 20, 3, 7, 3, 'C');
@@ -151,20 +165,20 @@ export default {
     { type: 'warp', x: 4, y: 12, to: { map: 'dungeon3', spawn: 'entrance' } },
     { type: 'eye_switch', id: 'ow_eye_d2', x: 40, y: 14, dir: 's', sets: 'd2_gate_open' },
     { type: 'cracked_wall', id: 'd3_crack', x: 7, y: 12, dir: 'e' },
-    // village folk (see new layout above)
-    { type: 'npc', id: 'maren', x: 18, y: 26, model: 'mage', dialogId: 'elder_maren', dir: 's' },
-    { type: 'npc', id: 'saltbeard', x: 17, y: 32, model: 'rogue', dialogId: 'saltbeard', dir: 'n' },
-    { type: 'npc', id: 'brena', x: 31, y: 25, model: 'barbarian', dialogId: 'brena', dir: 's' },
-    { type: 'npc', id: 'pip', x: 25, y: 28, model: 'rogue', scale: 0.38, dialogId: 'village_kid', dir: 'w' },
-    { type: 'npc', id: 'tam', x: 21, y: 30, model: 'barbarian', scale: 0.5, dialogId: 'villager_tam', dir: 'e' },
-    { type: 'sign', id: 'sign_village', x: 22, y: 32, dir: 's', dialogId: 'sign_village' },
+    // village folk: everyone stands where their life happens
+    { type: 'npc', id: 'maren', x: 19, y: 26, model: 'mage', dialogId: 'elder_maren', dir: 's' },       // outside her door
+    { type: 'npc', id: 'saltbeard', x: 26, y: 35, model: 'rogue', dialogId: 'saltbeard', dir: 'n' },     // end of his dock
+    { type: 'npc', id: 'brena', x: 30, y: 25, model: 'barbarian', dialogId: 'brena', dir: 's' },          // at the forge front
+    { type: 'npc', id: 'pip', x: 22, y: 27, model: 'rogue', scale: 0.38, dialogId: 'village_kid', dir: 'e' },  // playing by the well
+    { type: 'npc', id: 'tam', x: 24, y: 27, model: 'barbarian', scale: 0.5, dialogId: 'villager_tam', dir: 'w' }, // opposite Pip
+    { type: 'sign', id: 'sign_village', x: 22, y: 30, dir: 's', dialogId: 'sign_village' }, // beside the south gate, off the road
     { type: 'sign', id: 'sign_crypt', x: 21, y: 6, dir: 's', dialogId: 'sign_crypt' },
     { type: 'sign', id: 'sign_cellars', x: 36, y: 17, dir: 's', dialogId: 'sign_cellars' },
     { type: 'sign', id: 'sign_sanctum', x: 8, y: 14, dir: 's', dialogId: 'sign_sanctum' },
     // wandering dead
     { type: 'skeleton', x: 23, y: 12 },
     { type: 'skeleton', x: 17, y: 4 },  // up on the highland near the crypt
-    { type: 'skeleton', x: 30, y: 20 },
+    { type: 'skeleton', x: 30, y: 17 },
     { type: 'skeleton_archer', x: 36, y: 22 },
     { type: 'skeleton', x: 10, y: 18 },
   ],

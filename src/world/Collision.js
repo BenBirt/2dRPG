@@ -34,6 +34,13 @@ export class CollisionGrid {
     this.blockCount[i]++;
   }
 
+  // Drop every dynamic blocker (doors/chests/blocks re-register when their
+  // entities respawn). Used when a cached map is re-entered.
+  resetBlockers() {
+    this.blockers.clear();
+    this.blockCount.fill(0);
+  }
+
   removeBlocker(id) {
     const i = this.blockers.get(id);
     if (i === undefined) return;
