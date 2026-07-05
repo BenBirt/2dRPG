@@ -12,7 +12,7 @@ export const PLAYER = {
   iframes: 1.0,
   attackDuration: 0.28,
   attackWindow: [0.05, 0.2], // seconds into the swing when the arc is live
-  attackChainAfter: 0.16, // pressing attack after this point buffers the next swing
+  attackChainAfter: 0.09, // pressing attack after this point buffers the next swing
   attackRange: 2.1,
   attackArc: Math.PI / 3, // half-angle of the frontal sector
   attackDamage: 1,

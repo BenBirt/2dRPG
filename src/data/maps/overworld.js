@@ -36,25 +36,53 @@ path(g, 10, 27, 10, 13, 'd'); // west -> sanctum approach
 path(g, 10, 13, 8, 13, 'd');
 
 // --- Brookhollow village -----------------------------------------------------
-fillRect(g, 17, 23, 14, 8, 'g'); // clear the square
-fillRect(g, 20, 25, 8, 5, 'd'); // village square
-// Maren's house (walk-in, wood floor)
-fillRect(g, 17, 22, 6, 5, '#');
-fillRect(g, 18, 23, 4, 3, '_');
-set(g, 20, 26, '_'); // doorway gap in the south wall
-set(g, 18, 23, 'B'); // bed
-set(g, 21, 23, 's'); // shelf
-set(g, 18, 25, 'h'); // chair
-set(g, 19, 23, 't'); // table
-// Brena's forge (open-air)
-fillRect(g, 28, 23, 3, 2, '#');
-set(g, 28, 25, 'x');
-set(g, 30, 25, 'b');
-// market clutter
-set(g, 26, 30, 'b');
-set(g, 19, 29, 'o');
-set(g, 20, 29, 'o');
-scatter(g, 17, 22, 14, 9, ',', 0.05, 131);
+// A proper little hamlet: a cobbled square with a well, four homes, a forge,
+// market stalls and garden plots, ringed loosely so it reads as a place people
+// live. Cleared to grass first, then dressed.
+fillRect(g, 14, 21, 20, 11, 'g'); // clear a generous village footprint
+fillRect(g, 19, 25, 10, 5, 'd');  // cobbled square
+fillRect(g, 23, 21, 2, 11, 'd');  // north-south high street
+fillRect(g, 15, 27, 18, 1, 'd');  // east-west lane
+
+// Maren's house (elder, NW — walk-in, wood floor, hearth)
+fillRect(g, 15, 21, 6, 5, '#');
+fillRect(g, 16, 22, 4, 3, '_');
+set(g, 18, 25, 'd');   // doorway
+set(g, 16, 22, 'B');   // bed
+set(g, 19, 22, 's');   // shelf
+set(g, 16, 24, 'h');   // chair
+set(g, 17, 22, 't');   // table
+set(g, 19, 24, 'k');   // keg
+
+// Saltbeard's cottage (fisher, SW)
+fillRect(g, 15, 29, 5, 3, '#');
+fillRect(g, 16, 30, 3, 1, '_');
+set(g, 17, 31, 'd');   // doorway
+set(g, 16, 30, 'B');
+
+// Brena's forge (smith, E — open-sided)
+fillRect(g, 30, 22, 4, 3, '#');
+set(g, 31, 24, 'd');   // opening
+set(g, 30, 23, 'x');   // crates
+set(g, 33, 23, 'b');   // barrel of quench-water
+set(g, 32, 22, 's');   // tool shelf
+
+// Storehouse (SE)
+fillRect(g, 30, 29, 4, 3, '#');
+set(g, 31, 29, 'd');
+set(g, 32, 30, 'x');
+set(g, 33, 30, 'b');
+
+// village well at the heart of the square
+set(g, 23, 26, 'p');   // stone well-ring (column stands in for it)
+
+// market stalls + garden plots + fences
+set(g, 20, 29, 'o'); set(g, 21, 29, 'o');  // fruit barrels
+set(g, 26, 29, 'b'); set(g, 27, 30, 'o');  // trader's stall
+set(g, 25, 22, 'o'); set(g, 26, 22, 'q');  // north stall
+scatter(g, 15, 22, 4, 4, ',', 0.25, 201);  // Maren's herb garden
+scatter(g, 30, 25, 4, 4, ',', 0.2, 202);   // kitchen garden
+scatter(g, 14, 21, 20, 11, ',', 0.06, 131);
 
 // --- Bramble Crypt facade (D1, north) ---------------------------------------
 fillRect(g, 20, 3, 7, 3, 'C');
@@ -113,6 +141,7 @@ export default {
   entities: [
     // spawns
     { type: 'player_spawn', id: 'start', x: 23, y: 31, dir: Math.PI },
+    { type: 'player_spawn', id: 'from_cove', x: 23, y: 31, dir: Math.PI }, // arrive from the prologue beach
     { type: 'player_spawn', id: 'd1_exit', x: 23, y: 6, dir: 0 },
     { type: 'player_spawn', id: 'd2_exit', x: 38, y: 15, dir: 0 },
     { type: 'player_spawn', id: 'd3_exit', x: 5, y: 12, dir: Math.PI / 2 },
@@ -122,12 +151,13 @@ export default {
     { type: 'warp', x: 4, y: 12, to: { map: 'dungeon3', spawn: 'entrance' } },
     { type: 'eye_switch', id: 'ow_eye_d2', x: 40, y: 14, dir: 's', sets: 'd2_gate_open' },
     { type: 'cracked_wall', id: 'd3_crack', x: 7, y: 12, dir: 'e' },
-    // village
-    { type: 'npc', id: 'maren', x: 20, y: 24, model: 'mage', dialogId: 'elder_maren', dir: 's' },
-    { type: 'npc', id: 'saltbeard', x: 26, y: 31, model: 'rogue', dialogId: 'saltbeard', dir: 's' },
-    { type: 'npc', id: 'brena', x: 29, y: 26, model: 'barbarian', dialogId: 'brena', dir: 's' },
-    { type: 'npc', id: 'pip', x: 24, y: 28, model: 'rogue', scale: 0.38, dialogId: 'village_kid', dir: 'w' },
-    { type: 'sign', id: 'sign_village', x: 22, y: 30, dir: 's', dialogId: 'sign_village' },
+    // village folk (see new layout above)
+    { type: 'npc', id: 'maren', x: 18, y: 26, model: 'mage', dialogId: 'elder_maren', dir: 's' },
+    { type: 'npc', id: 'saltbeard', x: 17, y: 32, model: 'rogue', dialogId: 'saltbeard', dir: 'n' },
+    { type: 'npc', id: 'brena', x: 31, y: 25, model: 'barbarian', dialogId: 'brena', dir: 's' },
+    { type: 'npc', id: 'pip', x: 25, y: 28, model: 'rogue', scale: 0.38, dialogId: 'village_kid', dir: 'w' },
+    { type: 'npc', id: 'tam', x: 21, y: 30, model: 'barbarian', scale: 0.5, dialogId: 'villager_tam', dir: 'e' },
+    { type: 'sign', id: 'sign_village', x: 22, y: 32, dir: 's', dialogId: 'sign_village' },
     { type: 'sign', id: 'sign_crypt', x: 21, y: 6, dir: 's', dialogId: 'sign_crypt' },
     { type: 'sign', id: 'sign_cellars', x: 36, y: 17, dir: 's', dialogId: 'sign_cellars' },
     { type: 'sign', id: 'sign_sanctum', x: 8, y: 14, dir: 's', dialogId: 'sign_sanctum' },

@@ -34,6 +34,7 @@ export class HUD {
     const p = this.game.progress;
     const has = (f) => p.flags.has(f);
     const map = this.game.world?.mapDef?.id;
+    if (map === 'intro') return 'Follow the path up the cliff to the village.';
     if (has('dungeon3_boss_dead')) return 'The isle is saved. Return to Elder Maren.';
     if (p.hasBombs && !has('d3_crack')) {
       return map === 'overworld'

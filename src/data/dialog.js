@@ -2,12 +2,8 @@
 // or a function (progress) => pages, for flag-aware NPC dialog.
 
 export const INTRO_PAGES = [
-  `The storm took everything — the ship, the crew, the stars themselves.
-You wake with your face in cold sand and a sword still strapped to your back.`,
-  `This is Vessa, the islanders will tell you. The Hollow Isle.
-Once it glowed warm in the sea-mist, kept alive by the Heartlight in its Sanctum.`,
-  `But the Heartlight is broken. The mists are creeping inland.
-The crops fail. And the dead… the dead no longer stay where they are put.`,
+  `The storm took everything — the ship, the crew, the stars themselves.`,
+  `You wake face-down in cold sand, a sword still strapped to your back and the sea hissing at your heels.`,
 ];
 
 export const VICTORY_TEXT =
@@ -16,6 +12,15 @@ export const VICTORY_TEXT =
   The isle has a Warden again.`;
 
 export const DIALOG = {
+  // ----- prologue (the cove) -----
+  intro_hull: [`The splintered ribs of a hull — your hull — half-buried in the sand. Whatever brought you here isn't taking you back.`],
+  intro_path: [`A goat-track switchbacks up the cliff. Someone has set stones into the worst of it. Someone still lives here, then.`],
+  maren_intro: [
+    `An old woman waits at the top of the pass, unsurprised. "So the sea coughed up a knight. It does that, when it wants something done."`,
+    `"I'm Maren, eldest of Brookhollow — what's left of it. Come down to the village, sword-bearer. There's a thing gone wrong with this isle, and precious few hands left to right it."`,
+    `She turns without waiting. "Mind the dead on the way. They've stopped being polite."`,
+  ],
+
   // ----- Brookhollow village -----
   elder_maren: (p) => {
     if (p.flags.has('d3_boss_dead')) {
@@ -79,10 +84,24 @@ export const DIALOG = {
 
   village_kid: (p) => {
     if (p.flags.has('d3_boss_dead')) {
-      return [`Pip: The mist's GONE! Ma says I can play past the fence again. Did you do that? Maren says you did that.`];
+      return [`Pip: The mist's GONE! Ma says I can play past the fence again. Did you do that? Maren says you did that. Tam won't stop talking about you.`];
+    }
+    if (p.hasBow) {
+      return [`Pip: Is that a REAL warden-bow? Can I hold it? …No? What if I close my eyes. …Fine. Bet you can't hit the weathervane on Brena's forge. Bet you can't.`];
     }
     return [
-      `Pip: I'm not scared of the mist. But if you hear it knocking, you shouldn't open anything. That's what Tam did, and now Tam's a... a quiet kind of friend.`,
+      `Pip: I'm not scared of the mist. But if you hear it knocking, you shouldn't open anything. That's what Tam did — and Tam came back all quiet and wrong. He's better now. Mostly.`,
+    ];
+  },
+
+  // Tam — the boy who opened a door he shouldn't have; comic-melancholy.
+  villager_tam: (p) => {
+    if (p.flags.has('d1_boss_dead')) {
+      return [`Tam: I heard the crypt go quiet. I FELT it go quiet. That's the first time the inside of my head's been my own since… since the knocking. Thank you. Don't tell Pip I cried.`];
+    }
+    return [
+      `Tam: …oh. Sorry. I do that — drift off. Ever since the mist got in, part of me is always somewhere cold, listening for the knocking.`,
+      `Tam: If you're going into the crypt: the dead in there aren't sleeping anymore. They're WAITING. There's a difference. I can hear it.`,
     ];
   },
 

@@ -32,7 +32,7 @@ export function newProgress() {
     equipped: null, // 'bow' | 'bombs'
     keys: {}, // per-dungeon small key counts
     flags: new Set(),
-    location: { map: 'overworld', spawn: 'start' },
+    location: { map: 'intro', spawn: 'wake' },
   };
 }
 
