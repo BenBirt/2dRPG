@@ -169,6 +169,22 @@ Space — sword / talk / open.  K — equipped item.  Tab — switch item.  Esc 
     this.setState('PLAYING');
     this.events.emit('progress-changed');
     this.events.emit('hearts-changed');
+    this._warmMapCache();
+  }
+
+  // Build the remaining maps into the cache in the background, one at a time,
+  // so the first zone change doesn't pay the geometry-build cost either.
+  _warmMapCache() {
+    if (this._cacheWarmed) return;
+    this._cacheWarmed = true;
+    const pending = Object.values(MAPS).filter((m) => m.id !== this.world.mapDef?.id && m.id !== 'test');
+    const buildNext = () => {
+      const m = pending.shift();
+      if (!m) return;
+      try { this.world.precache(m); } catch (e) { console.warn('precache failed:', m.id, e); }
+      setTimeout(buildNext, 300); // spread the work between frames
+    };
+    setTimeout(buildNext, 1200); // let gameplay settle first
   }
 
   pause() {

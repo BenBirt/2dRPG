@@ -208,6 +208,58 @@ export function makeDetailGeometry(seed, hsh) {
   return merged(parts);
 }
 
+// A picket-fence cell: centre post plus rails running toward each connected
+// neighbour (n/e/s/w booleans), so runs read as continuous fences and corners
+// turn properly. ~30 tris.
+export function makeFenceGeometry(n, e, s, w) {
+  const wood = 0x9a7448;
+  const dark = 0x7a5a36;
+  const parts = [];
+  const post = (x, z) => {
+    const g = paint(new THREE.BoxGeometry(0.14, 0.95, 0.14).toNonIndexed(), dark, 0.03);
+    g.translate(x, 0.48, z);
+    parts.push(g);
+  };
+  post(0, 0);
+  const rail = (dx, dz) => {
+    // two rails from the centre post halfway to the neighbour cell
+    for (const y of [0.35, 0.7]) {
+      const len = 1.0;
+      const g = paint(new THREE.BoxGeometry(dx ? len : 0.09, 0.09, dz ? len : 0.09).toNonIndexed(), wood, 0.04);
+      g.translate(dx * len / 2, y, dz * len / 2);
+      parts.push(g);
+    }
+  };
+  if (n) rail(0, -1);
+  if (s) rail(0, 1);
+  if (e) rail(1, 0);
+  if (w) rail(-1, 0);
+  if (!n && !s && !e && !w) rail(1, 0); // isolated cell still shows something
+  return merged(parts);
+}
+
+// The village well: stone ring, two posts, a little cone roof, dark water.
+export function makeWellGeometry() {
+  const parts = [];
+  const ring = paint(new THREE.CylinderGeometry(0.7, 0.78, 0.7, 10, 1, true).toNonIndexed(), 0x8a8478, 0.05);
+  ring.translate(0, 0.35, 0);
+  parts.push(ring);
+  const water = paint(new THREE.CircleGeometry(0.62, 10).toNonIndexed(), 0x1d3a52, 0.02);
+  water.rotateX(-Math.PI / 2);
+  water.translate(0, 0.55, 0);
+  parts.push(water);
+  for (const sx of [-0.6, 0.6]) {
+    const p = paint(new THREE.BoxGeometry(0.12, 1.5, 0.12).toNonIndexed(), 0x7a5a36, 0.03);
+    p.translate(sx, 0.75, 0);
+    parts.push(p);
+  }
+  const roof = paint(new THREE.ConeGeometry(1.05, 0.6, 4).toNonIndexed(), 0xa8543a, 0.04);
+  roof.rotateY(Math.PI / 4);
+  roof.translate(0, 1.75, 0);
+  parts.push(roof);
+  return merged(parts);
+}
+
 // Distant, unreachable backdrop scenery for open-air maps: a wide sea, a ring
 // of hazy mountains beyond the coast, and a few far islands. Everything is
 // vertex-coloured and merged into one Group; it sits outside the play area and
@@ -220,6 +272,20 @@ export function makeBackdrop(cols, rows, tile) {
 
   // deterministic pseudo-random from an index
   const rnd = (i, s) => ((Math.sin((i + 1) * (s * 78.233 + 12.9898)) * 43758.5453) % 1 + 1) % 1;
+
+  // Distance from the map centre to the edge of the map RECTANGLE along a
+  // given angle (+ margin). Backdrop scenery is placed at least this far out
+  // so nothing ever lands inside the playfield — a circle radius on a
+  // non-square map would (and did) intrude on the shorter axis.
+  const hw = (cols * tile) / 2;
+  const hh = (rows * tile) / 2;
+  const rectExit = (ang, margin) => {
+    const dx = Math.cos(ang);
+    const dz = Math.sin(ang);
+    const tx = Math.abs(dx) > 1e-6 ? (hw + margin) / Math.abs(dx) : Infinity;
+    const tz = Math.abs(dz) > 1e-6 ? (hh + margin) / Math.abs(dz) : Infinity;
+    return Math.min(tx, tz);
+  };
 
   // --- wide sea plane, low, extending to the horizon ---
   const sea = new THREE.Mesh(
@@ -241,11 +307,11 @@ export function makeBackdrop(cols, rows, tile) {
   // --- ring of hazy mountains beyond the coast (tall, so their peaks rise
   // above the play area into view under the steep top-down camera) ---
   const mtnParts = [];
-  const ringR = span * 0.55;
   const count = 52;
   for (let i = 0; i < count; i++) {
     const ang = (i / count) * Math.PI * 2 + rnd(i, 3) * 0.12;
-    const rr = ringR + rnd(i, 7) * span * 0.3;
+    // always beyond the map rectangle, whatever its aspect ratio
+    const rr = rectExit(ang, 14) + rnd(i, 7) * span * 0.3;
     const mx = cx + Math.cos(ang) * rr;
     const mz = cz + Math.sin(ang) * rr;
     const h = 16 + rnd(i, 11) * 26;
@@ -265,7 +331,8 @@ export function makeBackdrop(cols, rows, tile) {
   const islParts = [];
   for (let i = 0; i < 7; i++) {
     const ang = rnd(i, 23) * Math.PI * 2;
-    const rr = span * (0.34 + rnd(i, 29) * 0.18);
+    // islands sit in open sea, clearly past the coast
+    const rr = rectExit(ang, 8) + rnd(i, 29) * span * 0.18;
     const ix = cx + Math.cos(ang) * rr;
     const iz = cz + Math.sin(ang) * rr;
     const s = 3 + rnd(i, 31) * 5;

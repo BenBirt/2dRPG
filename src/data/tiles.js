@@ -20,6 +20,8 @@ export const LEGEND = {
   'C': { floor: 'stone', solid: true, wallStyle: 'cliff' },
   'T': { floor: 'grass', solid: true, wallStyle: 'tree' },
   'R': { floor: 'grass', solid: true, wallStyle: 'rock' },
+  'f': { floor: 'grass', solid: true, wallStyle: 'fence' },   // picket fence
+  'w': { floor: 'grass', solid: true, wallStyle: 'well' },    // village well
   '~': { floor: 'water', solid: true },
   ',': { floor: 'grass', cuttable: 'grass' },         // tall grass tuft
   'o': { floor: 'stone', prop: 'barrel_small', cuttable: 'pot' },
