@@ -13,8 +13,6 @@ export const VICTORY_TEXT =
 
 export const DIALOG = {
   // ----- prologue (the cove) -----
-  intro_hull: [`The splintered ribs of a hull — your hull — half-buried in the sand. Whatever brought you here isn't taking you back.`],
-  intro_path: [`A goat-track switchbacks up the cliff. Someone has set stones into the worst of it. Someone still lives here, then.`],
   maren_intro: [
     `An old woman waits at the top of the pass, unsurprised. "So the sea coughed up a knight. It does that, when it wants something done."`,
     `"I'm Maren, eldest of Brookhollow — what's left of it. Come down to the village, sword-bearer. There's a thing gone wrong with this isle, and precious few hands left to right it."`,

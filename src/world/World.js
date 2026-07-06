@@ -61,6 +61,7 @@ export class World {
     this.heightfield = built.heightfield;
     this.cuttables = built.cuttables;
     this.waterMesh = built.waterMesh;
+    this.waterTime = built.waterTime;
     this.waterfalls = built.waterfalls || [];
     this.torches = built.torches || [];
     this.cols = built.cols;
@@ -210,12 +211,11 @@ export class World {
 
   update(dt) {
     this.time += dt;
-    if (this.waterMesh) {
-      this.waterMesh.position.y = Math.sin(this.time * 1.4) * 0.035;
-    }
-    // scroll waterfall UVs downward for a flowing look
+    // drive the water surface wave shader
+    if (this.waterTime) this.waterTime.value = this.time;
+    // scroll waterfall stripes downward — falling water
     for (const wf of this.waterfalls) {
-      if (wf.material.map) wf.material.map.offset.y = (this.time * 0.9) % 1;
+      if (wf.material.map) wf.material.map.offset.y = (this.time * 1.4) % 1;
       wf.material.emissiveIntensity = 0.28 + Math.sin(this.time * 6) * 0.06;
     }
     this._updateTorchLights();

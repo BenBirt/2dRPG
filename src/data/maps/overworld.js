@@ -11,7 +11,7 @@ const g = makeGrid(W, H, 'g');
 outlineRect(g, 0, 0, W, H, 'C');
 fillRect(g, 1, 1, W - 2, 1, 'C'); // thick north cliff
 fillRect(g, 0, 34, W, 4, '~'); // the sea
-fillRect(g, 14, 32, 20, 2, 'd'); // landing beach
+fillRect(g, 14, 32, 20, 2, 'a'); // landing beach (sand)
 fillRect(g, 1, 2, 2, 32, 'C'); // west cliff band
 fillRect(g, 43, 2, 2, 32, 'C'); // east cliff band
 

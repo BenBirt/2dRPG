@@ -8,8 +8,8 @@ import { Heightfield } from './Heightfield.js';
 import {
   makeTreeGeometry, makeRockGeometry, makeGrassTuftGeometry,
   makeCliffGeometry, makeGroundCellGeometry, makeRampGeometry, makeDetailGeometry,
-  makeWaterfallGeometry, makeBackdrop, makeFenceGeometry, makeWellGeometry,
-  GROUND_COLORS,
+  makeBeachDetailGeometry, makeWaterfallGeometry, makeBackdrop, makeFenceGeometry,
+  makeWellGeometry, GROUND_COLORS,
 } from './Procedural.js';
 
 const WALL_H = 2.2;
@@ -200,12 +200,41 @@ export function buildMap(mapDef) {
             break;
           case 'grass':
           case 'dirt':
+          case 'sand': {
             // pass the cell's world centre so per-vertex noise is continuous
             // across cell borders (color is baked before the placement matrix)
+            let blend = null;
+            if (def.floor === 'sand') {
+              // wet sand: smooth per-vertex darkening by distance to the
+              // nearest water cell (no square colour blocks)
+              const waterRects = [];
+              for (let dr = -2; dr <= 2; dr++) {
+                for (let dc = -2; dc <= 2; dc++) {
+                  if (defAt(c + dc, r + dr)?.floor === 'water') {
+                    waterRects.push([(c + dc) * TILE, (r + dr) * TILE]);
+                  }
+                }
+              }
+              if (waterRects.length) {
+                blend = {
+                  color: 0xa8936b,
+                  fn: (wx, wz) => {
+                    let min = Infinity;
+                    for (const [rx, rz] of waterRects) {
+                      const dx = Math.max(rx - wx, 0, wx - (rx + TILE));
+                      const dz = Math.max(rz - wz, 0, wz - (rz + TILE));
+                      min = Math.min(min, Math.hypot(dx, dz));
+                    }
+                    return 1 - Math.min(min / 2.6, 1);
+                  },
+                };
+              }
+            }
             batcher.addProcedural('ground', procMaterial,
-              makeGroundCellGeometry(TILE, GROUND_COLORS[def.floor], x, z),
+              makeGroundCellGeometry(TILE, GROUND_COLORS[def.floor], x, z, blend),
               placeMatrix(x, yc + 0.001, z));
             break;
+          }
           case 'water':
             waterCells.push({ c, r });
             break;
@@ -343,16 +372,20 @@ export function buildMap(mapDef) {
     return false;
   }
 
-  // --- decorative detail scatter: flowers, pebbles, mushrooms on open grass
-  // for visual richness (non-solid, non-interactive) ---
+  // --- decorative detail scatter: flowers/pebbles/mushrooms on open grass,
+  // driftwood/shells/seaweed on sand (non-solid, non-interactive) ---
   const detailGeos = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const def = LEGEND[grid[r][c]];
-      if (!def || def.solid || def.prop || def.cuttable || def.floor !== 'grass') continue;
+      if (!def || def.solid || def.prop || def.cuttable) continue;
+      if (def.floor !== 'grass' && def.floor !== 'sand') continue;
       const dh = cellHash(c * 7 + 1, r * 13 + 5);
-      if (dh > 0.34) continue; // ~1/3 of open grass cells get a detail
-      const geo = makeDetailGeometry(c * 31 + r * 17, dh);
+      const density = def.floor === 'sand' ? 0.42 : 0.34;
+      if (dh > density) continue;
+      const geo = def.floor === 'sand'
+        ? makeBeachDetailGeometry(c * 31 + r * 17, dh)
+        : makeDetailGeometry(c * 31 + r * 17, dh);
       geo.applyMatrix4(placeMatrix((c + 0.5) * TILE, hf.level(c, r) * STEP, (r + 0.5) * TILE,
         dh * Math.PI * 2));
       detailGeos.push(geo);
@@ -369,18 +402,28 @@ export function buildMap(mapDef) {
     group.add(makeBackdrop(cols, rows, TILE));
   }
 
-  // --- water: merged translucent planes at each cell's elevation ---
+  // --- water: merged translucent planes, animated by a vertex wave so the
+  // surface visibly FLOWS (geometry is in world coords, so `position` in the
+  // shader is world-space; World.update drives the shared time uniform) ---
   let waterMesh = null;
+  const waterTime = { value: 0 };
   if (waterCells.length) {
     const geos = waterCells.map(({ c, r }) =>
-      new THREE.PlaneGeometry(TILE, TILE).rotateX(-Math.PI / 2)
+      new THREE.PlaneGeometry(TILE, TILE, 2, 2).rotateX(-Math.PI / 2)
         .translate((c + 0.5) * TILE, hf.level(c, r) * STEP - 0.22, (r + 0.5) * TILE).toNonIndexed());
-    waterMesh = new THREE.Mesh(
-      mergeGeometries(geos, false),
-      new THREE.MeshStandardMaterial({
-        color: 0x2f6fb8, transparent: true, opacity: 0.82, roughness: 0.18, metalness: 0.1,
-      })
-    );
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x2f6fb8, transparent: true, opacity: 0.82, roughness: 0.18, metalness: 0.1,
+    });
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = waterTime;
+      shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        transformed.y += sin(uTime * 1.7 + position.x * 0.9 + position.z * 0.4) * 0.06
+                       + cos(uTime * 1.1 + position.z * 1.1) * 0.045;`
+      );
+    };
+    waterMesh = new THREE.Mesh(mergeGeometries(geos, false), mat);
     waterMesh.receiveShadow = true;
     group.add(waterMesh);
   }
@@ -414,7 +457,7 @@ export function buildMap(mapDef) {
     group.add(field.mesh);
   }
 
-  return { group, collision, heightfield: hf, waterMesh, waterfalls, cuttables, torches, cols, rows };
+  return { group, collision, heightfield: hf, waterMesh, waterTime, waterfalls, cuttables, torches, cols, rows };
 }
 
 const capMaterial = new THREE.MeshStandardMaterial({ color: 0x3d3a45, roughness: 1, metalness: 0 });

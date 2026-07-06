@@ -16,6 +16,7 @@ export const LEGEND = {
   '_': { floor: 'wood' },                // interior wood floor
   'g': { floor: 'grass' },               // overworld grass
   'd': { floor: 'dirt' },                // dirt path
+  'a': { floor: 'sand' },                // beach sand
   '#': { floor: 'stone', solid: true, wallStyle: 'dressed' },
   'C': { floor: 'stone', solid: true, wallStyle: 'cliff' },
   'T': { floor: 'grass', solid: true, wallStyle: 'tree' },
