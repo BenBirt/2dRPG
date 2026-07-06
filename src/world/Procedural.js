@@ -295,10 +295,12 @@ export function makeBackdrop(cols, rows, tile) {
   sea.position.set(cx, -0.9, cz);
   group.add(sea);
 
-  // --- opaque earth base directly under the map footprint so gaps between
-  // floor/wall tiles show ground, not the sea below ---
+  // --- opaque earth base under the map INTERIOR so gaps between floor/wall
+  // tiles show ground, not the sea below. Inset one tile: where the border
+  // ring meets open water the sea runs visibly to the horizon instead of a
+  // dark earth band. ---
   const base = new THREE.Mesh(
-    new THREE.PlaneGeometry(cols * tile, rows * tile).rotateX(-Math.PI / 2),
+    new THREE.PlaneGeometry((cols - 2) * tile, (rows - 2) * tile).rotateX(-Math.PI / 2),
     new THREE.MeshStandardMaterial({ color: 0x3f3a30, roughness: 1 })
   );
   base.position.set(cx, -0.4, cz);
@@ -360,7 +362,13 @@ export function makeWaterfallGeometry(tile, topY, botY, dir) {
   const geo = new THREE.PlaneGeometry(tile * 0.9, height, 1, 6);
   // face outward along dir; default plane faces +z
   const rot = { s: 0, n: Math.PI, e: -Math.PI / 2, w: Math.PI / 2 }[dir] ?? 0;
-  const mesh = new THREE.Mesh(geo, waterfallMat.clone());
+  const mat = waterfallMat.clone();
+  // scrolling stripe texture = visibly falling water (World scrolls offset.y)
+  mat.map = getFlowTexture().clone();
+  mat.map.wrapS = mat.map.wrapT = THREE.RepeatWrapping;
+  mat.map.repeat.set(1, Math.max(1, height / 2));
+  mat.map.needsUpdate = true;
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.y = rot;
   mesh.position.y = (topY + botY) / 2;
   // nudge to the cliff face edge
@@ -384,11 +392,13 @@ function groundNoise(x, z) {
   return n1 * 0.7 + n2 * 0.3;
 }
 
-export function makeGroundCellGeometry(tile, color, cx, cz) {
+const _blendCol = new THREE.Color();
+export function makeGroundCellGeometry(tile, color, cx, cz, blend = null) {
   const geo = new THREE.PlaneGeometry(tile, tile, 2, 2).toNonIndexed();
   geo.deleteAttribute('uv');
   geo.rotateX(-Math.PI / 2);
   const base = new THREE.Color(color);
+  if (blend) _blendCol.set(blend.color);
   const pos = geo.attributes.position;
   const count = pos.count;
   const colors = new Float32Array(count * 3);
@@ -398,7 +408,14 @@ export function makeGroundCellGeometry(tile, color, cx, cz) {
     const n = groundNoise(wx, wz);           // -1..1
     const shade = 1 + n * 0.1;               // brightness wobble
     const warm = n * 0.03;                    // slight hue drift
-    _tmpCol.copy(base).multiplyScalar(shade);
+    _tmpCol.copy(base);
+    // optional per-vertex blend toward a second colour (e.g. wet sand near
+    // water) — smooth gradients instead of per-cell colour blocks
+    if (blend) {
+      const k = blend.fn(wx, wz);
+      if (k > 0) _tmpCol.lerp(_blendCol, Math.min(1, k));
+    }
+    _tmpCol.multiplyScalar(shade);
     colors[i * 3] = THREE.MathUtils.clamp(_tmpCol.r + warm, 0, 1);
     colors[i * 3 + 1] = THREE.MathUtils.clamp(_tmpCol.g, 0, 1);
     colors[i * 3 + 2] = THREE.MathUtils.clamp(_tmpCol.b - warm * 0.5, 0, 1);
@@ -410,7 +427,113 @@ export function makeGroundCellGeometry(tile, color, cx, cz) {
 export const GROUND_COLORS = {
   grass: 0x63ad4e,
   dirt: 0xb08a5c,
+  sand: 0xd9c391,
 };
+
+// The broken hull of the knight's ship: a keel beam with pairs of curved ribs
+// rising from the sand, a snapped mast, and strewn planks — show, don't tell.
+export function makeWreckGeometry(seed = 0) {
+  const rnd = (n) => ((Math.sin((seed + 2) * (n * 91.7 + 7.3)) * 43758.5453) % 1 + 1) % 1;
+  const wood = 0x6e4f33;
+  const weathered = 0x8a7050;
+  const parts = [];
+
+  // keel: a long half-buried beam
+  const keel = paint(new THREE.BoxGeometry(0.28, 0.34, 5.6).toNonIndexed(), wood, 0.05);
+  keel.translate(0, -0.02, 0);
+  parts.push(keel);
+
+  // rib pairs: torus arcs standing out of the sand, wider amidships. The
+  // torus lies in the XY plane (X = athwartships, Y = up), tube axis along Z
+  // (the keel) — exactly a rib's plane, so no reorientation is needed: the
+  // starboard rib is the arc from the waterline (angle 0) up past vertical,
+  // and the port rib is its mirror.
+  for (let i = 0; i < 5; i++) {
+    const z = -2.2 + i * 1.1;
+    const r = 1.05 - Math.abs(i - 2) * 0.22 + rnd(i) * 0.08;
+    for (const side of [-1, 1]) {
+      const arcLen = Math.PI * (0.42 + rnd(i * 3 + side) * 0.12);
+      const rib = paint(new THREE.TorusGeometry(r, 0.07, 5, 8, arcLen).toNonIndexed(),
+        i % 2 ? wood : weathered, 0.05);
+      if (side < 0) rib.rotateY(Math.PI); // mirror for the port side
+      rib.rotateZ(side * -0.1);            // slight outward lean
+      rib.translate(0, -0.15, z);          // hull sunk a little into the sand
+      parts.push(rib);
+    }
+  }
+
+  // snapped mast leaning across the wreck
+  const mast = paint(new THREE.CylinderGeometry(0.09, 0.12, 3.4, 6).toNonIndexed(), weathered, 0.04);
+  mast.rotateZ(1.15);
+  mast.rotateY(0.5);
+  mast.translate(0.8, 0.7, 0.6);
+  parts.push(mast);
+
+  // strewn planks half-sunk in the sand
+  for (let i = 0; i < 6; i++) {
+    const p = paint(new THREE.BoxGeometry(0.18, 0.06, 0.9 + rnd(i * 7) * 0.7).toNonIndexed(),
+      i % 2 ? wood : weathered, 0.06);
+    p.rotateY(rnd(i * 11) * Math.PI);
+    p.translate((rnd(i * 13) - 0.5) * 4.5, 0.03, (rnd(i * 17) - 0.5) * 5.5);
+    parts.push(p);
+  }
+  return merged(parts);
+}
+
+// Beach detail: driftwood, shells, seaweed, wet pebbles — chosen by seed.
+export function makeBeachDetailGeometry(seed, hsh) {
+  const kind = seed % 3;
+  const parts = [];
+  if (kind === 0) {
+    // driftwood branch
+    const g = paint(new THREE.CylinderGeometry(0.05, 0.08, 0.9 + hsh, 5).toNonIndexed(), 0x9a8266, 0.06);
+    g.rotateZ(Math.PI / 2);
+    g.rotateY(hsh * Math.PI);
+    g.translate(0, 0.06, 0);
+    parts.push(g);
+  } else if (kind === 1) {
+    // little shell cluster (pale flecks)
+    for (let i = 0; i < 3; i++) {
+      const s = paint(new THREE.IcosahedronGeometry(0.06 + (i % 2) * 0.03, 0).toNonIndexed(),
+        i % 2 ? 0xf0e7d6 : 0xe0b8a8, 0.03);
+      s.scale(1.3, 0.5, 1);
+      s.translate((hsh * (i + 3) * 37 % 1 - 0.5) * 1.0, 0.03, (hsh * (i + 5) * 53 % 1 - 0.5) * 1.0);
+      parts.push(s);
+    }
+  } else {
+    // washed-up seaweed strand
+    for (let i = 0; i < 3; i++) {
+      const w = paint(new THREE.BoxGeometry(0.5 + hsh * 0.4, 0.03, 0.09).toNonIndexed(), 0x3c6b46, 0.05);
+      w.rotateY(hsh * 6 + i * 0.9);
+      w.translate((hsh * (i + 2) * 29 % 1 - 0.5) * 0.9, 0.02, (hsh * (i + 4) * 41 % 1 - 0.5) * 0.9);
+      parts.push(w);
+    }
+  }
+  return merged(parts);
+}
+
+// Repeating stripe texture that scrolls down waterfall sheets so they read as
+// falling water rather than a static pane.
+let flowTexture = null;
+export function getFlowTexture() {
+  if (flowTexture) return flowTexture;
+  const c = document.createElement('canvas');
+  c.width = 32; c.height = 64;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 64);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.35, '#cfe6f5');
+  grad.addColorStop(0.6, '#ffffff');
+  grad.addColorStop(1, '#bcd9ec');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 32, 64);
+  // brighter streaks
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  for (let i = 0; i < 5; i++) ctx.fillRect(3 + i * 6, (i * 17) % 40, 2, 26);
+  flowTexture = new THREE.CanvasTexture(c);
+  flowTexture.wrapS = flowTexture.wrapT = THREE.RepeatWrapping;
+  return flowTexture;
+}
 
 // Shared blob-shadow texture (radial gradient), created once.
 let blobTexture = null;

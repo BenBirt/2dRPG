@@ -24,7 +24,7 @@ const SELF_TEST = process.argv.includes('--self-test');
 const WALKABLE_TYPES = new Set([
   'player_spawn', 'npc', 'skeleton', 'skeleton_archer', 'skeleton_mage',
   'boss1', 'boss2', 'boss3', 'pickup', 'chest', 'warp', 'sign', 'lectern',
-  'floor_switch', 'push_block',
+  'floor_switch', 'push_block', 'wreck',
 ]);
 
 // Entity types whose id field is REQUIRED

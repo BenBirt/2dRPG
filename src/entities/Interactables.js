@@ -3,6 +3,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Entity, AnimController } from './Entity.js';
 import { Assets } from '../core/Assets.js';
 import { TILE } from '../data/balance.js';
+import { makeWreckGeometry } from '../world/Procedural.js';
 
 const DIRS = { n: Math.PI, s: 0, e: -Math.PI / 2, w: Math.PI / 2 };
 
@@ -180,6 +181,32 @@ export class EyeSwitch extends Entity {
     this.game.events.emit('sfx', 'secret');
     this.game.setFlag(this.def.sets);
     return true;
+  }
+}
+
+// ---------------------------------------------------------------- Wreck
+// The knight's broken ship, half-buried on the beach — pure scenery that
+// tells the story without a sign. Blocks its own cell and the one behind it.
+export class Wreck extends Entity {
+  constructor(game, def) {
+    const { x, z } = cellCenter(def.x, def.y);
+    super(game, x, z);
+    this.def = def;
+    this.noShadow = false;
+    this.mesh = new THREE.Group();
+    const hull = new THREE.Mesh(
+      makeWreckGeometry(def.seed ?? 1),
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 })
+    );
+    this.mesh.add(hull);
+    this.facing = (def.angle ?? 0.5); // beached at an angle, not axis-aligned
+    // keel runs ~3 cells; block the two central cells so you can't stand in it
+    const d = DIRS[def.dir ?? 's'];
+    const ax = Math.round(Math.sin(d));
+    const az = Math.round(Math.cos(d));
+    game.world.collision.addBlocker(`wreck:${def.id}a`, def.x, def.y);
+    game.world.collision.addBlocker(`wreck:${def.id}b`, def.x + ax, def.y + az);
+    this.syncMesh();
   }
 }
 
@@ -631,6 +658,7 @@ export function createInteractable(game, def) {
     case 'push_block': return new PushBlock(game, def);
     case 'cracked_wall': return new CrackedWall(game, def);
     case 'warp': return new Warp(game, def);
+    case 'wreck': return new Wreck(game, def);
     default: return null;
   }
 }
